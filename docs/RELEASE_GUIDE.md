@@ -60,20 +60,27 @@ git push origin v0.3.0
 
 ## What Happens During Release
 
-When you push a tag (v*), three GitHub Actions will run in parallel:
+When you push a tag (v*), **one single workflow** runs with multiple jobs:
 
-1. **npm-publish.yml**:
-   - Run tests on Node.js 20 and 22
-   - Run linting and build processes
+### **release.yml** workflow contains:
+1. **test** job (runs on Node.js 20.x & 22.x):
+   - Install dependencies
+   - Run tests and linting
+   - Must pass for other jobs to run
+
+2. **publish** job (after tests pass):
+   - Build the project
    - Publish to npm with provenance
 
-2. **create-release.yml**:
+3. **release** job (after tests pass):
    - Generate release notes from commit history
    - Create GitHub release with installation instructions
 
-3. **changelog.yml**:
+4. **changelog** job (after tests pass):
    - Update CHANGELOG.md with new version
    - Commit changes back to repository
+
+**Important**: Only **tag pushes** trigger releases. Regular pushes to `develop`/`main` only run the CI workflow (testing and security audit).
 
 ## Release Types
 

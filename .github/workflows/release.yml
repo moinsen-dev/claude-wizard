@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20.x, 22.x]
+        node-version: [22.x]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -51,9 +51,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -83,7 +83,7 @@ jobs:
         run: |
           # Get the previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
-          
+
           if [ -n "$PREV_TAG" ]; then
             echo "## Changes in this release" > release_notes.md
             echo "" >> release_notes.md
@@ -93,7 +93,7 @@ jobs:
             echo "" >> release_notes.md
             echo "🎉 Welcome to the first release of Claude Agents CLI!" >> release_notes.md
           fi
-          
+
           echo "" >> release_notes.md
           echo "## Installation" >> release_notes.md
           echo "" >> release_notes.md
@@ -131,10 +131,10 @@ jobs:
           # Get the previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
           CURRENT_TAG=${GITHUB_REF#refs/tags/}
-          
+
           echo "## [$CURRENT_TAG] - $(date +%Y-%m-%d)" > temp_changelog.md
           echo "" >> temp_changelog.md
-          
+
           if [ -n "$PREV_TAG" ]; then
             # Get commits since previous tag
             git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD >> temp_changelog.md
@@ -142,7 +142,7 @@ jobs:
             # First release, get all commits
             git log --pretty=format:"- %s (%h)" >> temp_changelog.md
           fi
-          
+
           echo "" >> temp_changelog.md
           echo "" >> temp_changelog.md
 
