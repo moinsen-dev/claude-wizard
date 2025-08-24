@@ -60,13 +60,20 @@ git push origin v0.3.0
 
 ## What Happens During Release
 
-When you push a tag (v*), the GitHub Action will:
+When you push a tag (v*), three GitHub Actions will run in parallel:
 
-1. **Run Tests**: Execute full test suite on Node.js 18 and 20
-2. **Build**: Run linting and build processes
-3. **Create GitHub Release**: Generate release notes from commits
-4. **Publish to npm**: Publish the package with provenance
-5. **Update CHANGELOG**: Automatically generate and commit changelog
+1. **npm-publish.yml**:
+   - Run tests on Node.js 20 and 22
+   - Run linting and build processes
+   - Publish to npm with provenance
+
+2. **create-release.yml**:
+   - Generate release notes from commit history
+   - Create GitHub release with installation instructions
+
+3. **changelog.yml**:
+   - Update CHANGELOG.md with new version
+   - Commit changes back to repository
 
 ## Release Types
 
