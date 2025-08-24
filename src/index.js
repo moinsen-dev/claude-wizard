@@ -4,6 +4,7 @@ const { GitHubAPI } = require('./github.js');
 const { Installer } = require('./installer.js');
 const { Prompts } = require('./prompts.js');
 const { loadConfig, saveConfig } = require('./utils.js');
+const { bootstrap } = require('./bootstrap.js');
 
 async function main(cliOptions = {}) {
   console.log(chalk.blue.bold('\n🤖 Claude Agents CLI\n'));
@@ -52,6 +53,10 @@ async function main(cliOptions = {}) {
 
     case 'install':
       await handleInstallation(availableAgents, defaultRepo, options, prompts, installer, config);
+      break;
+
+    case 'bootstrap':
+      await bootstrap({ verbose: options.verbose });
       break;
 
     case 'update':

@@ -1,6 +1,6 @@
 const chalk = require('chalk');
 const ora = require('ora');
-// Test pre-commit hook
+const path = require('path');
 const { TemplateRepository } = require('./template-repository');
 const { RepositoryManager } = require('./repository-manager');
 const { TemplateBootstrapper } = require('./template-bootstrapper');
@@ -14,6 +14,8 @@ async function bootstrap(options = {}) {
     const config = await loadConfig();
     const repoManager = new RepositoryManager(config.repositories);
     const templateRepo = new TemplateRepository();
+    const { Prompts } = require('./prompts');
+    const prompts = new Prompts();
 
     // Handle --list-templates option
     if (options.listTemplates) {
@@ -55,8 +57,8 @@ async function bootstrap(options = {}) {
       return;
     }
 
-    // Interactive template selection
-    await handleInteractiveBootstrap(availableTemplates, options);
+    // Interactive mode (default behavior)
+    await handleInteractiveBootstrap(availableTemplates, options, prompts, repoManager, templateRepo);
 
   } catch (error) {
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
@@ -139,45 +141,186 @@ async function handleDirectBootstrap(availableTemplates, options) {
     return;
   }
 
-  // Prepare bootstrap configuration
-  const projectConfig = {
-    template: selectedTemplate,
-    name: options.name || await promptProjectName(selectedTemplate),
-    path: options.path || process.cwd(),
+  // Prepare project info for Claude bootstrap
+  const projectName = options.name || await promptProjectName(selectedTemplate);
+  const projectPath = options.path || path.join(process.cwd(), projectName.replace(/\s+/g, '-').toLowerCase());
+
+  const projectInfo = {
+    name: projectName,
+    description: `A new ${selectedTemplate.language} project based on ${selectedTemplate.name}`,
+    path: projectPath
+  };
+
+  const bootstrapOptions = {
     dryRun: options.dryRun || false,
     verbose: options.verbose || false
   };
 
-  // Execute bootstrap
-  await executeBootstrap(projectConfig);
+  // Execute bootstrap with Claude
+  await executeBootstrapWithClaude(selectedTemplate, projectInfo, bootstrapOptions);
 }
 
-async function handleInteractiveBootstrap(availableTemplates, options) {
-  console.log(chalk.cyan('🎯 Interactive Template Selection\n'));
+async function handleInteractiveBootstrap(availableTemplates, options, prompts, repoManager, templateRepo) {
+  let action = '';
 
-  // Select language/category
-  const languages = Object.keys(availableTemplates);
-  if (languages.length === 1) {
-    console.log(chalk.white(`Using ${languages[0]} templates`));
+  do {
+    action = await prompts.selectBootstrapAction();
+
+    switch (action) {
+    case 'list':
+      await listAllTemplates(repoManager, templateRepo);
+      break;
+
+    case 'create':
+      await handleInteractiveProjectCreation(availableTemplates, options, prompts);
+      break;
+
+    case 'back':
+      return;
+
+    default:
+      console.log(chalk.yellow('Unknown action'));
+    }
+  } while (action !== 'back');
+}
+
+async function handleInteractiveProjectCreation(availableTemplates, options, prompts) {
+  try {
+    // Collect project information
+    const projectName = await prompts.getProjectName();
+    const projectDescription = await prompts.getProjectDescription();
+
+    // Generate default path
+    const defaultPath = path.join(process.cwd(), projectName.replace(/\s+/g, '-').toLowerCase());
+    const projectPath = await prompts.getProjectPath(defaultPath);
+
+    // Select template
+    const selectedTemplate = await prompts.selectTemplate(availableTemplates);
+    if (selectedTemplate === 'back') {
+      return;
+    }
+
+    // Prepare project info
+    const projectInfo = {
+      name: projectName,
+      description: projectDescription,
+      path: projectPath
+    };
+
+    // Confirm bootstrap
+    const confirmed = await prompts.confirmBootstrap(projectInfo, selectedTemplate);
+    if (!confirmed) {
+      console.log(chalk.yellow('\n⏸️ Bootstrap cancelled by user'));
+      return;
+    }
+
+    // Execute bootstrap
+    await executeBootstrapWithClaude(selectedTemplate, projectInfo, options);
+
+  } catch (error) {
+    console.error(chalk.red('\n❌ Bootstrap failed:'), error.message);
   }
+}
 
-  // TODO: Implement interactive prompts for template selection
-  // For now, just select the first available template
-  const firstLanguage = languages[0];
-  const firstTemplate = availableTemplates[firstLanguage][0];
+async function executeBootstrapWithClaude(template, projectInfo, options = {}) {
+  const bootstrapper = new TemplateBootstrapper();
+  const { name, description, path: projectPath } = projectInfo;
 
-  console.log(chalk.yellow('Note: Interactive selection coming soon. Using first available template:'));
-  console.log(chalk.white(`  ${firstTemplate.name} (${firstLanguage})`));
+  console.log(chalk.cyan(`\n🚀 Creating ${template.language} project: ${name}\n`));
 
-  const projectConfig = {
-    template: firstTemplate,
-    name: options.name || `my-${firstLanguage.toLowerCase()}-project`,
-    path: options.path || process.cwd(),
-    dryRun: options.dryRun || false,
-    verbose: options.verbose || false
-  };
+  try {
+    // 1. Validate and create directory
+    if (options.verbose) {
+      console.log(chalk.cyan(`[BOOTSTRAP] Project path: ${projectPath}`));
+    }
 
-  await executeBootstrap(projectConfig);
+    // Check if directory already exists
+    if (await require('fs-extra').pathExists(projectPath)) {
+      const files = await require('fs-extra').readdir(projectPath);
+      if (files.length > 0) {
+        throw new Error(`Directory ${projectPath} already exists and is not empty`);
+      }
+      if (options.verbose) {
+        console.log(chalk.yellow('[BOOTSTRAP] Directory exists but is empty, proceeding...'));
+      }
+    }
+
+    console.log(chalk.white('📁 Creating project directory...'));
+    if (options.verbose) {
+      console.log(chalk.cyan(`[FS] Creating directory: ${projectPath}`));
+    }
+
+    await require('fs-extra').ensureDir(projectPath);
+
+    if (options.verbose) {
+      console.log(chalk.green('[FS] ✔ Directory created successfully'));
+    }
+
+    // Initialize git repository
+    console.log(chalk.white('🔧 Initializing git repository...'));
+    await bootstrapper.initializeGit(projectPath, options.verbose);
+
+    // 2. Use Claude Code CLI for bootstrap (if available)
+    const claudeAvailable = await bootstrapper.isClaudeCliAvailable();
+
+    if (claudeAvailable && !options.skipClaude) {
+      console.log(chalk.cyan('\n🤖 Using Claude Code for intelligent project bootstrap...\n'));
+
+      const claudeResult = await bootstrapper.bootstrapWithClaude(
+        template,
+        name,
+        projectPath,
+        description,
+        { verbose: options.verbose }
+      );
+
+      if (claudeResult.success) {
+        console.log(chalk.green('\n✅ Bootstrap script created successfully!'));
+
+        // Show the script location and instructions
+        if (claudeResult.scriptPath) {
+          console.log(chalk.cyan('\n📄 Script location:'), claudeResult.scriptPath);
+        }
+
+        console.log(chalk.cyan('\n🏁 To complete the bootstrap:'));
+        if (claudeResult.instructions) {
+          claudeResult.instructions.forEach((step, index) => {
+            console.log(chalk.white(`  ${index + 1}. ${step}`));
+          });
+        }
+
+        console.log(chalk.gray('\n💡 The script will use Claude Code to generate your project files with proper environment sourcing.'));
+        console.log(chalk.yellow('\n⚠️  Note: You need to run the script manually to complete the bootstrap process.'));
+
+        return;
+      } else {
+        console.log(chalk.yellow('\n⚠️ Bootstrap script generation failed, falling back to manual template processing...'));
+        console.log(chalk.gray(`Error: ${claudeResult.error || 'Unknown error'}`));
+      }
+    } else {
+      if (!claudeAvailable) {
+        console.log(chalk.yellow('\n⚠️ Claude Code CLI not available, using manual template processing...'));
+      }
+    }
+
+    // 3. Fallback: Use manual template processing
+    console.log(chalk.white('\n📄 Processing template files...'));
+    await executeBootstrap({
+      template,
+      name,
+      path: projectPath,
+      description,
+      dryRun: options.dryRun,
+      verbose: options.verbose
+    });
+
+  } catch (error) {
+    console.error(chalk.red(`\n❌ Bootstrap failed: ${error.message}`));
+
+    if (options.verbose) {
+      console.error(error.stack);
+    }
+  }
 }
 
 async function executeBootstrap(projectConfig) {

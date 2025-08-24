@@ -13,6 +13,7 @@ class Prompts {
         choices: [
           { name: 'Browse available agents', value: 'browse' },
           { name: 'Install agents', value: 'install' },
+          { name: 'Bootstrap new project', value: 'bootstrap' },
           { name: 'Update agents', value: 'update' },
           { name: 'Remove agents', value: 'remove' },
           { name: 'List installed agents', value: 'list' },
@@ -497,6 +498,140 @@ class Prompts {
         name: 'confirmed',
         message: 'Continue browsing agents?',
         default: true
+      }
+    ]);
+    return confirmed;
+  }
+
+  // Bootstrap-specific prompts
+  async selectBootstrapAction() {
+    const { action } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'action',
+        message: 'What would you like to do?',
+        choices: [
+          { name: '📋 List available templates', value: 'list' },
+          { name: '🏗️ Create new project', value: 'create' },
+          { name: '🔙 Back to main menu', value: 'back' }
+        ]
+      }
+    ]);
+    return action;
+  }
+
+  async getProjectName() {
+    const { projectName } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'projectName',
+        message: 'Project name:',
+        validate: (input) => {
+          if (!input || input.trim().length === 0) {
+            return 'Project name is required';
+          }
+          // Check for valid directory name
+          if (!/^[a-zA-Z0-9_-]+( [a-zA-Z0-9_-]+)*$/.test(input.trim())) {
+            return 'Project name should only contain letters, numbers, spaces, hyphens, and underscores';
+          }
+          return true;
+        },
+        filter: (input) => input.trim()
+      }
+    ]);
+    return projectName;
+  }
+
+  async getProjectDescription() {
+    const { description } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'description',
+        message: 'Project description (optional):',
+        filter: (input) => input.trim()
+      }
+    ]);
+    return description || null;
+  }
+
+  async getProjectPath(defaultPath) {
+    const { projectPath } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'projectPath',
+        message: 'Project path:',
+        default: defaultPath,
+        validate: (input) => {
+          if (!input || input.trim().length === 0) {
+            return 'Project path is required';
+          }
+          return true;
+        }
+      }
+    ]);
+    return projectPath;
+  }
+
+  async selectTemplate(availableTemplates) {
+    const choices = [];
+
+    // Group templates by language
+    Object.keys(availableTemplates).forEach(language => {
+      availableTemplates[language].forEach(template => {
+        choices.push({
+          name: `${template.name} (${language})`,
+          value: template,
+          short: template.name
+        });
+      });
+    });
+
+    if (choices.length === 0) {
+      throw new Error('No templates available');
+    }
+
+    const { template } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'template',
+        message: 'Select a template:',
+        choices: [
+          ...choices,
+          { name: '🔙 Back', value: 'back' }
+        ]
+      }
+    ]);
+    return template;
+  }
+
+  async confirmBootstrap(projectInfo, template) {
+    console.log(chalk.cyan('\n📋 Bootstrap Summary:'));
+    console.log(chalk.white(`Project Name: ${projectInfo.name}`));
+    if (projectInfo.description) {
+      console.log(chalk.white(`Description: ${projectInfo.description}`));
+    }
+    console.log(chalk.white(`Path: ${projectInfo.path}`));
+    console.log(chalk.white(`Template: ${template.name} (${template.language})`));
+    console.log(chalk.white(`Repository: ${template.repository.name}`));
+
+    const { confirmed } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmed',
+        message: 'Continue with project creation?',
+        default: true
+      }
+    ]);
+    return confirmed;
+  }
+
+  async confirmOperation(message, defaultValue = true) {
+    const { confirmed } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmed',
+        message: message,
+        default: defaultValue
       }
     ]);
     return confirmed;

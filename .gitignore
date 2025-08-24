@@ -80,6 +80,8 @@ public
 # Temporary folders
 tmp/
 temp/
+hello-world/
+my-bank/
 
 # Logs
 logs

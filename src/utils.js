@@ -226,6 +226,15 @@ async function loadConfig() {
         description: 'AI-optimized project templates',
         default: true,
         enabled: true
+      },
+      {
+        name: 'Claude Wizard Templates',
+        url: 'https://github.com/moinsen-dev/claude-wizard',
+        branch: 'feature/bootstrap-templates',
+        type: REPOSITORY_TYPES.TEMPLATES,
+        description: 'Built-in templates for common project types',
+        default: false,
+        enabled: true
       }
     ],
     installedAgents: [],
@@ -250,12 +259,12 @@ async function loadConfig() {
     if (await fs.pathExists(configPath)) {
       const config = await fs.readJSON(configPath);
       const migratedConfig = await migrateConfig({ ...defaultConfig, ...config });
-      
+
       // Save migrated config if changes were made
       if (config !== migratedConfig) {
         await fs.writeJSON(configPath, migratedConfig, { spaces: 2 });
       }
-      
+
       return migratedConfig;
     }
 
@@ -320,7 +329,7 @@ async function migrateConfig(config) {
       type: REPOSITORY_TYPES.TEMPLATES,
       enabled: repo.enabled !== undefined ? repo.enabled : true
     }));
-    
+
     migrated.repositories = [...migrated.repositories, ...templateRepos];
     delete migrated.templateRepositories;
     changed = true;
@@ -378,7 +387,7 @@ function getRepositoriesByType(repositories, type) {
 }
 
 function getDefaultRepository(repositories, type) {
-  return repositories.find(repo => repo.type === type && repo.default === true && repo.enabled !== false);
+  return repositories.find(repo => repo.type === type && repo.default === true && repo.enabled !== false) || null;
 }
 
 function validateRepositoryType(type) {

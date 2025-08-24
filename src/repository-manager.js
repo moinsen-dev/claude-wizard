@@ -91,7 +91,7 @@ class RepositoryManager {
     }
 
     // Check for duplicate names (excluding current repo)
-    const existingRepo = this.repositories.find((repo, i) => 
+    const existingRepo = this.repositories.find((repo, i) =>
       i !== index && repo.name === updatedRepo.name
     );
     if (existingRepo) {
@@ -153,7 +153,7 @@ class RepositoryManager {
     }
 
     const repo = this.repositories[index];
-    
+
     // Remove default flag from other repositories of the same type
     this.repositories.forEach(r => {
       if (r.type === repo.type) {
@@ -188,14 +188,14 @@ class RepositoryManager {
 
     // If we disabled the default repository, find a new default
     if (!repo.enabled && repo.default) {
-      const enabledSameType = this.repositories.filter(r => 
+      const enabledSameType = this.repositories.filter(r =>
         r.type === repo.type && r.enabled && r !== repo
       );
-      
+
       if (enabledSameType.length > 0) {
         enabledSameType[0].default = true;
       }
-      
+
       repo.default = false;
     }
 
@@ -211,7 +211,7 @@ class RepositoryManager {
    */
   getGroupedByType() {
     const grouped = {};
-    
+
     Object.values(REPOSITORY_TYPES).forEach(type => {
       grouped[type] = this.getByType(type);
     });
@@ -231,10 +231,11 @@ class RepositoryManager {
     };
 
     Object.values(REPOSITORY_TYPES).forEach(type => {
-      const typeRepos = this.getByType(type);
+      const allTypeRepos = this.repositories.filter(repo => repo.type === type);
+      const enabledTypeRepos = this.getByType(type);
       stats.byType[type] = {
-        total: typeRepos.length,
-        enabled: typeRepos.filter(r => r.enabled !== false).length,
+        total: allTypeRepos.length,
+        enabled: enabledTypeRepos.length,
         default: this.getDefault(type)?.name || 'None'
       };
     });
@@ -261,7 +262,7 @@ class RepositoryManager {
    */
   search(query) {
     const lowerQuery = query.toLowerCase();
-    return this.repositories.filter(repo => 
+    return this.repositories.filter(repo =>
       repo.name.toLowerCase().includes(lowerQuery) ||
       (repo.description && repo.description.toLowerCase().includes(lowerQuery))
     );
