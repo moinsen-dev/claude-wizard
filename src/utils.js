@@ -195,6 +195,13 @@ ${content}`;
   }
 }
 
+// Repository types
+const REPOSITORY_TYPES = {
+  AGENTS: 'agents',
+  TEMPLATES: 'templates',
+  MIXED: 'mixed'
+};
+
 // Configuration Management
 async function loadConfig() {
   const configPath = path.join(os.homedir(), '.claude-wizard-config.json');
@@ -206,7 +213,19 @@ async function loadConfig() {
         name: 'Moinsen Dev Agents',
         url: 'https://github.com/moinsen-dev/agents',
         branch: 'main',
-        default: true
+        type: REPOSITORY_TYPES.AGENTS,
+        description: 'Default Claude AI agents repository',
+        default: true,
+        enabled: true
+      },
+      {
+        name: 'Vibe Templates',
+        url: 'https://github.com/chrishayuk/vibe-coding-templates',
+        branch: 'main',
+        type: REPOSITORY_TYPES.TEMPLATES,
+        description: 'AI-optimized project templates',
+        default: true,
+        enabled: true
       }
     ],
     installedAgents: [],
@@ -214,6 +233,9 @@ async function loadConfig() {
     preferences: {
       showDescriptions: true,
       confirmBeforeInstall: true,
+      confirmBeforeBootstrap: true,
+      autoInstallDependencies: true,
+      autoInitGit: true,
       cacheTimeout: 3600,
       defaultModel: 'inherit',
       autoAssignColors: false
@@ -227,7 +249,14 @@ async function loadConfig() {
   try {
     if (await fs.pathExists(configPath)) {
       const config = await fs.readJSON(configPath);
-      return { ...defaultConfig, ...config };
+      const migratedConfig = await migrateConfig({ ...defaultConfig, ...config });
+      
+      // Save migrated config if changes were made
+      if (config !== migratedConfig) {
+        await fs.writeJSON(configPath, migratedConfig, { spaces: 2 });
+      }
+      
+      return migratedConfig;
     }
 
     // Create default config file
@@ -247,6 +276,57 @@ async function saveConfig(config) {
   } catch {
     console.warn('Warning: Could not save config');
   }
+}
+
+// Configuration migration for backward compatibility
+async function migrateConfig(config) {
+  let migrated = { ...config };
+  let changed = false;
+
+  // Migrate repositories to include type field
+  if (migrated.repositories) {
+    migrated.repositories = migrated.repositories.map(repo => {
+      if (!repo.type) {
+        changed = true;
+        return {
+          ...repo,
+          type: REPOSITORY_TYPES.AGENTS, // Default to agents for existing repos
+          description: repo.description || 'Legacy repository',
+          enabled: repo.enabled !== undefined ? repo.enabled : true
+        };
+      }
+      return repo;
+    });
+  }
+
+  // Add new preferences if missing
+  if (!migrated.preferences.confirmBeforeBootstrap) {
+    migrated.preferences.confirmBeforeBootstrap = true;
+    changed = true;
+  }
+  if (!migrated.preferences.autoInstallDependencies) {
+    migrated.preferences.autoInstallDependencies = true;
+    changed = true;
+  }
+  if (!migrated.preferences.autoInitGit) {
+    migrated.preferences.autoInitGit = true;
+    changed = true;
+  }
+
+  // Migrate old templateRepositories field if it exists
+  if (migrated.templateRepositories) {
+    const templateRepos = migrated.templateRepositories.map(repo => ({
+      ...repo,
+      type: REPOSITORY_TYPES.TEMPLATES,
+      enabled: repo.enabled !== undefined ? repo.enabled : true
+    }));
+    
+    migrated.repositories = [...migrated.repositories, ...templateRepos];
+    delete migrated.templateRepositories;
+    changed = true;
+  }
+
+  return changed ? migrated : config;
 }
 
 // Installation metadata tracking
@@ -292,6 +372,19 @@ async function backupExisting(filePath) {
   return null;
 }
 
+// Repository helper functions
+function getRepositoriesByType(repositories, type) {
+  return repositories.filter(repo => repo.type === type && repo.enabled !== false);
+}
+
+function getDefaultRepository(repositories, type) {
+  return repositories.find(repo => repo.type === type && repo.default === true && repo.enabled !== false);
+}
+
+function validateRepositoryType(type) {
+  return Object.values(REPOSITORY_TYPES).includes(type);
+}
+
 // Repository validation
 function validateRepository(repository) {
   const errors = [];
@@ -308,6 +401,12 @@ function validateRepository(repository) {
 
   if (!repository.branch || !repository.branch.trim()) {
     errors.push('Repository branch is required');
+  }
+
+  if (!repository.type) {
+    errors.push('Repository type is required');
+  } else if (!validateRepositoryType(repository.type)) {
+    errors.push(`Invalid repository type. Must be one of: ${Object.values(REPOSITORY_TYPES).join(', ')}`);
   }
 
   return {
@@ -415,6 +514,7 @@ module.exports = {
   convertToCommand,
   loadConfig,
   saveConfig,
+  migrateConfig,
   getInstallationMetadata,
   validateAgentFile,
   ensureDirectory,
@@ -422,5 +522,9 @@ module.exports = {
   validateRepository,
   validateConfiguration,
   isValidGitHubUrl,
-  AVAILABLE_COLORS
+  getRepositoriesByType,
+  getDefaultRepository,
+  validateRepositoryType,
+  AVAILABLE_COLORS,
+  REPOSITORY_TYPES
 };
