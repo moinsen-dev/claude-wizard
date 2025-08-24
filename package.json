@@ -13,7 +13,7 @@
     "lint:fix": "eslint src/ bin/ --fix",
     "build": "npm run lint && npm test",
     "dev": "node bin/claude-wizard.js",
-    "prepare": "npm run build",
+    "prepare": "husky",
     "prepublishOnly": "npm run build",
     "release:patch": "npm version patch && git push origin --tags",
     "release:minor": "npm version minor && git push origin --tags",
@@ -33,7 +33,9 @@
   "devDependencies": {
     "@eslint/js": "^9.34.0",
     "eslint": "^9.34.0",
-    "jest": "^30.0.5"
+    "husky": "^9.1.7",
+    "jest": "^30.0.5",
+    "lint-staged": "^16.1.5"
   },
   "keywords": [
     "claude",
@@ -65,6 +67,14 @@
   "engines": {
     "node": ">=14.0.0",
     "npm": ">=6.0.0"
+  },
+  "lint-staged": {
+    "src/**/*.js": [
+      "eslint --fix"
+    ],
+    "bin/**/*.js": [
+      "eslint --fix"
+    ]
   },
   "files": [
     "bin/",
