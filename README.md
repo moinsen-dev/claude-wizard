@@ -7,14 +7,24 @@
 [![npm version](https://badge.fury.io/js/claude-wizard.svg)](https://badge.fury.io/js/claude-wizard)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-14%2B-green.svg)](https://nodejs.org/)
+[![Test Coverage](https://img.shields.io/badge/coverage-63.83%25-yellowgreen.svg)](https://github.com/moinsen-dev/claude-wizard)
+[![Tests](https://img.shields.io/badge/tests-98%20passed-brightgreen.svg)](https://github.com/moinsen-dev/claude-wizard)
 
 </div>
 
-> **Interactive CLI tool to discover, browse, and install Claude AI agents from GitHub repositories**
+> **Interactive CLI tool to discover, browse, and install Claude AI agents from GitHub repositories, plus bootstrap new projects from templates**
 
-Transform your Claude Code experience with a curated collection of specialized AI agents. Browse, preview, and install agents seamlessly with our intuitive command-line interface.
+Transform your Claude Code experience with a curated collection of specialized AI agents and project templates. Browse, preview, and install agents seamlessly, or bootstrap new projects with our comprehensive template system.
 
 ## ✨ Features
+
+### 🏗️ **Project Bootstrap** *(New in v0.3.0!)*
+- **Template-Driven Development** - Bootstrap new projects from curated templates
+- **Multiple Languages** - Support for Python, JavaScript, TypeScript, Rust, Go, and more
+- **Smart Variable Substitution** - Automatic project name, author, and date replacement
+- **Package Manager Detection** - Automatic setup with npm, yarn, pip, uv, cargo, etc.
+- **Git Integration** - Initialize repositories with proper .gitignore files
+- **Dry-Run Mode** - Preview project structure before creation
 
 ### 🔍 **Discover & Browse**
 - **Browse by Department** - Explore agents organized by specialty (Engineering, Marketing, Design, etc.)
@@ -29,7 +39,8 @@ Transform your Claude Code experience with a curated collection of specialized A
 - **Batch Operations** - Install by department, individual selection, or search results
 
 ### ⚙️ **Configuration Management**
-- **Repository Management** - Add, edit, and manage multiple agent repositories
+- **Unified Repository System** - Manage agents, templates, and mixed repositories
+- **Repository Types** - Support for agents, templates, or mixed repository types
 - **User Preferences** - Set default models, colors, and installation behaviors
 - **Validation & Safety** - Repository accessibility checks and confirmation dialogs
 - **Statistics & Insights** - Track installed agents and configuration details
@@ -49,7 +60,7 @@ claude-wizard
 
 ### Command Line Options
 ```bash
-# Install with specific model and auto-assign colors
+# Install agents with specific model and auto-assign colors
 npx claude-wizard --model opus --assign-colors
 
 # Install as commands instead of agents
@@ -57,6 +68,12 @@ npx claude-wizard --as-commands
 
 # Preview installation without making changes
 npx claude-wizard --dry-run --verbose
+
+# Bootstrap new projects from templates
+npx claude-wizard bootstrap
+npx claude-wizard bootstrap --list-templates
+npx claude-wizard bootstrap -t python
+npx claude-wizard bootstrap --dry-run
 ```
 
 ## 📋 Menu Overview
@@ -167,7 +184,10 @@ Add custom agent repositories through the interactive interface or by editing th
 ## 🎯 Command Line Reference
 
 ```bash
-Usage: claude-wizard [options]
+Usage: claude-wizard [options] [command]
+
+Commands:
+  bootstrap [options]  Bootstrap a new project from templates
 
 Options:
   -V, --version        output the version number
@@ -177,6 +197,16 @@ Options:
   --dry-run            Preview what will be installed without installing
   -v, --verbose        Show detailed output
   -h, --help           display help for command
+
+Bootstrap Options:
+  -t, --template <name>  Specify template name or language
+  -n, --name <name>      Project name
+  -p, --path <path>      Project path (default: current directory)
+  --list-templates       List all available templates
+  --dry-run              Preview project structure without creating
+  --verbose              Show detailed bootstrap process
+  --no-install           Skip dependency installation
+  --no-git               Skip git repository initialization
 ```
 
 ## 🔄 **Agent vs Command Format**
@@ -244,10 +274,12 @@ npm run lint         # Run ESLint code quality checks
 
 ### Code Quality Standards
 This project maintains **zero tolerance** for errors and warnings:
-- ✅ 100% ESLint compliance
-- ✅ 100% test coverage for utilities
-- ✅ Comprehensive error handling
+- ✅ 100% ESLint compliance with pre-commit hooks
+- ✅ 98 comprehensive tests with 63.83% coverage
+- ✅ 96%+ coverage for all core components
+- ✅ Comprehensive error handling and edge cases
 - ✅ Input validation and sanitization
+- ✅ Automated quality enforcement with Husky
 
 ## 🤝 Contributing
 

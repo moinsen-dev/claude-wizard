@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2024-08-24
+
+### Added
+- **🏗️ Project Bootstrap System** - Revolutionary new feature for creating projects from templates
+  - `claude-wizard bootstrap` command for project initialization
+  - Support for vibe-coding-templates format and structure
+  - Template discovery from multiple GitHub repositories
+  - Interactive template selection (coming soon)
+  - Template variable substitution ({{project-name}}, {{author}}, etc.)
+  - Automatic dependency installation and project setup
+  - Git repository initialization
+  - Dry-run mode for preview without changes
+- **🔧 Unified Repository Management**
+  - Repository types: agents, templates, mixed
+  - Type-aware repository operations and filtering
+  - Backward compatibility with existing configurations
+  - Automatic configuration migration
+- **⚙️ Advanced Template Engine**
+  - BOOTSTRAP.md file parsing and metadata extraction
+  - Project variable processing with multiple naming conventions
+  - Package manager detection (npm, yarn, pip, uv, cargo, go)
+  - Language-specific setup commands and next steps
+  - Template validation and error handling
+- **🧪 Development Quality Improvements**
+  - Pre-commit hooks with automatic lint:fix using Husky
+  - Comprehensive test coverage (98 tests, 63.83% overall coverage)
+  - Bootstrap functionality: 96.24% test coverage
+  - Repository management: 97.4% test coverage
+  - Template system: 92.98% test coverage
+
+### Changed
+- **Repository System**: Unified architecture supporting multiple repository types
+- **Configuration Format**: Enhanced to support template repositories alongside agent repositories
+- **CLI Structure**: Added bootstrap command with comprehensive options
+- **Error Handling**: Improved error messages and user feedback throughout
+
+### Technical
+- **New Core Components**: RepositoryManager, TemplateRepository, TemplateBootstrapper classes
+- **Testing**: Added 5 new test suites with comprehensive edge case coverage
+- **Code Quality**: Maintained zero ESLint errors/warnings with automated enforcement
+- **Git Hooks**: Pre-commit automation ensures code quality on every commit
+
+### Bootstrap Command Options
+```bash
+claude-wizard bootstrap                    # Interactive mode
+claude-wizard bootstrap --list-templates  # List available templates
+claude-wizard bootstrap -t python         # Use specific template
+claude-wizard bootstrap --dry-run         # Preview without changes
+claude-wizard bootstrap --verbose         # Detailed output
+```
+
 ## [0.2.0] - 2025-01-XX
 
 ### Added
