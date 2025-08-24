@@ -1,0 +1,21 @@
+{
+  "repositories": [
+    {
+      "name": "Claude Agents Library",
+      "url": "https://github.com/moinsen-dev/agents",
+      "branch": "main",
+      "default": true,
+      "description": "Claude Code agents collection"
+    }
+  ],
+  "cache": {
+    "ttl": 3600,
+    "maxAge": 86400
+  },
+  "github": {
+    "rateLimit": {
+      "maxRequests": 5000,
+      "window": 3600000
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "name": "claude-agents",
+  "version": "0.2.0",
+  "description": "🤖 Interactive CLI to discover, browse, and install Claude AI agents from GitHub repositories",
+  "main": "src/index.js",
+  "bin": {
+    "claude-agents": "./bin/claude-agents.js"
+  },
+  "scripts": {
+    "start": "node bin/claude-agents.js",
+    "test": "jest",
+    "lint": "eslint src/ bin/",
+    "lint:fix": "eslint src/ bin/ --fix",
+    "build": "npm run lint && npm test",
+    "dev": "node bin/claude-agents.js",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "commander": "^14.0.0",
+    "fs-extra": "^11.3.1",
+    "inquirer": "^8.2.7",
+    "node-cache": "^5.1.2",
+    "ora": "^5.4.1",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "chalk": "^4.1.2",
+    "eslint": "^9.34.0",
+    "jest": "^30.0.5"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai",
+    "agents",
+    "cli",
+    "interactive",
+    "github",
+    "automation",
+    "productivity",
+    "developer-tools",
+    "anthropic"
+  ],
+  "author": {
+    "name": "Claude Agents Community",
+    "email": "hello@claude-agents.dev",
+    "url": "https://github.com/your-username/claude-agents"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/claude-agents.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/claude-agents/issues"
+  },
+  "homepage": "https://github.com/your-username/claude-agents#readme",
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "config/",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "CLAUDE.md"
+  ]
+}
