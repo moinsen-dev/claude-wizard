@@ -114,7 +114,7 @@ jobs:
           else
             echo "## First release" > release_notes.md
             echo "" >> release_notes.md
-            echo "🎉 Welcome to the first release of Claude Agents CLI!" >> release_notes.md
+            echo "🎉 Welcome to the first release of Claude Wizard CLI!" >> release_notes.md
           fi
 
           echo "" >> release_notes.md
