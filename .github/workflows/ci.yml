@@ -38,8 +38,8 @@ jobs:
       - name: Test CLI installation
         run: |
           npm pack
-          npm install -g claude-agents-*.tgz
-          claude-agents --help
+          npm install -g claude-wizard-*.tgz
+          claude-wizard --help
 
   security:
     runs-on: ubuntu-latest

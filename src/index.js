@@ -548,7 +548,7 @@ function displayCurrentConfiguration(config) {
   console.log(chalk.white('\n📈 Statistics:'));
   console.log(chalk.gray(`  Installed agents: ${config.installedAgents.length}`));
   console.log(chalk.gray(`  Installed commands: ${config.installedCommands.length}`));
-  console.log(chalk.gray('  Configuration file: ~/.claude-agents-config.json'));
+  console.log(chalk.gray('  Configuration file: ~/.claude-wizard-config.json'));
 }
 
 function displayRepositories(repositories) {

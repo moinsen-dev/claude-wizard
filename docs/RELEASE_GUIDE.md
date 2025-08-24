@@ -25,7 +25,7 @@ The easiest way to create a release is using the npm scripts:
 # For bug fixes (0.2.0 -> 0.2.1)
 npm run release:patch
 
-# For new features (0.2.0 -> 0.3.0)  
+# For new features (0.2.0 -> 0.3.0)
 npm run release:minor
 
 # For breaking changes (0.2.0 -> 1.0.0)
@@ -69,8 +69,11 @@ When you push a tag (v*), **one single workflow** runs with multiple jobs:
    - Must pass for other jobs to run
 
 2. **publish** job (after tests pass):
+   - Extract version from tag
+   - Update package.json with tag version
    - Build the project
-   - Publish to npm with provenance
+   - Check if version already exists on npm
+   - Publish to npm with provenance (only if new version)
 
 3. **release** job (after tests pass):
    - Generate release notes from commit history
@@ -106,9 +109,9 @@ When you push a tag (v*), **one single workflow** runs with multiple jobs:
 
 After release, verify:
 
-1. **GitHub Release**: Check the release was created at https://github.com/your-username/claude-agents/releases
-2. **NPM Package**: Verify at https://www.npmjs.com/package/claude-agents
-3. **Installation**: Test installation with `npx claude-agents@latest`
+1. **GitHub Release**: Check the release was created at https://github.com/moinsen-dev/claude-wizard/releases
+2. **NPM Package**: Verify at https://www.npmjs.com/package/claude-wizard
+3. **Installation**: Test installation with `npx claude-wizard@latest`
 
 ## Troubleshooting
 
@@ -133,6 +136,13 @@ If a release fails partway through:
 3. Delete the tag if created: `git push origin --delete v0.2.0`
 4. Re-run the release process
 
+### Version Already Exists
+If you get "version already exists on npm":
+1. The workflow will automatically skip publishing and continue
+2. This is normal for re-running releases
+3. The GitHub release and changelog will still be created
+4. Use a new version tag for actual updates: `npm run release:patch`
+
 ## Best Practices
 
 1. **Test Before Release**: Always run `npm run build` locally first
@@ -153,5 +163,5 @@ git push origin --tags
 
 Pre-release versions will be marked as "pre-release" on GitHub and can be installed with:
 ```bash
-npm install -g claude-agents@next
+npm install -g claude-wizard@next
 ```

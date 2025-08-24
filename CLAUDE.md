@@ -26,7 +26,7 @@ Every commit must pass ALL checks. No exceptions. No compromises. Zero tolerance
 ```bash
 npm start                    # Run with interactive prompts
 npm run dev                  # Same as npm start
-node bin/claude-agents.js    # Direct execution
+node bin/claude-wizard.js     # Direct execution
 ```
 
 ### Testing and Quality
@@ -38,13 +38,13 @@ npm run lint                 # Run ESLint on src/ and bin/
 ### CLI Usage Examples
 ```bash
 # Install agents with specific model
-node bin/claude-agents.js --model opus --assign-colors
+node bin/claude-wizard.js --model opus --assign-colors
 
 # Install as commands instead of agents
-node bin/claude-agents.js --as-commands
+node bin/claude-wizard.js --as-commands
 
 # Dry run to preview installation
-node bin/claude-agents.js --dry-run --verbose
+node bin/claude-wizard.js --dry-run --verbose
 ```
 
 ## Architecture Overview
@@ -53,7 +53,7 @@ This is an interactive CLI tool that installs Claude Code agents from GitHub rep
 
 ### Core Components
 
-**Entry Point (`bin/claude-agents.js`)**
+**Entry Point (`bin/claude-wizard.js`)**
 - CLI argument parsing using Commander.js
 - Error handling and process management
 - Delegates to main application logic
@@ -111,7 +111,7 @@ This is an interactive CLI tool that installs Claude Code agents from GitHub rep
 
 ### Configuration System
 
-User preferences stored in `~/.claude-agents-config.json`:
+User preferences stored in `~/.claude-wizard-config.json`:
 - Repository configurations (URL, branch, credentials)
 - Installation history and metadata tracking
 - User preferences for models, colors, and paths

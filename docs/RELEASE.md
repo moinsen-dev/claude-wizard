@@ -1,6 +1,6 @@
 # Release Process
 
-This document describes how to create and publish releases of the claude-agents CLI tool.
+This document describes how to create and publish releases of the claude-wizard CLI tool.
 
 ## Prerequisites
 
@@ -66,8 +66,8 @@ Once you push the tag, GitHub Actions will automatically:
 2. **Verify npm**: Check that the package appears on npmjs.com
 3. **Test Installation**: Try installing the published package:
    ```bash
-   npm install -g claude-agents@latest
-   claude-agents --version
+   npm install -g claude-wizard@latest
+   claude-wizard --version
    ```
 
 ## Workflow Configuration

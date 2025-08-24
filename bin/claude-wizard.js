@@ -7,7 +7,7 @@ const { main } = require('../src/index.js');
 const program = new Command();
 
 program
-  .name('claude-agents')
+  .name('claude-wizard')
   .description('Interactive CLI to install Claude AI agents from GitHub repositories')
   .version('0.2.0')
   .option('-m, --model <model>', 'Claude model to assign (opus, sonnet, inherit, none)')

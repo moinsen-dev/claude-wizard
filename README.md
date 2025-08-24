@@ -4,7 +4,7 @@
 
 # 🤖 Claude Agents CLI
 
-[![npm version](https://badge.fury.io/js/claude-agents.svg)](https://badge.fury.io/js/claude-agents)
+[![npm version](https://badge.fury.io/js/claude-wizard.svg)](https://badge.fury.io/js/claude-wizard)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-14%2B-green.svg)](https://nodejs.org/)
 
@@ -38,30 +38,30 @@ Transform your Claude Code experience with a curated collection of specialized A
 
 ### Instant Usage (Recommended)
 ```bash
-npx claude-agents
+npx claude-wizard
 ```
 
 ### Global Installation
 ```bash
-npm install -g claude-agents
-claude-agents
+npm install -g claude-wizard
+claude-wizard
 ```
 
 ### Command Line Options
 ```bash
 # Install with specific model and auto-assign colors
-npx claude-agents --model opus --assign-colors
+npx claude-wizard --model opus --assign-colors
 
-# Install as commands instead of agents  
-npx claude-agents --as-commands
+# Install as commands instead of agents
+npx claude-wizard --as-commands
 
 # Preview installation without making changes
-npx claude-agents --dry-run --verbose
+npx claude-wizard --dry-run --verbose
 ```
 
 ## 📋 Menu Overview
 
-When you run `claude-agents`, you'll see an intuitive menu system:
+When you run `claude-wizard`, you'll see an intuitive menu system:
 
 ```
 🤖 Claude Agents CLI
@@ -70,7 +70,7 @@ When you run `claude-agents`, you'll see an intuitive menu system:
 ? What would you like to do?
 ❯ Browse available agents    ← Explore before installing
   Install agents            ← Choose and install agents
-  Update agents            ← Update existing agents  
+  Update agents            ← Update existing agents
   Remove agents            ← Remove installed agents
   List installed agents    ← View what's installed
   Configure repositories   ← Manage settings
@@ -79,7 +79,7 @@ When you run `claude-agents`, you'll see an intuitive menu system:
 ### 🔍 **Browse Available Agents**
 Perfect for discovery and exploration:
 - **By Department** - Navigate Engineering, Marketing, Design, and more
-- **View All** - See complete agent catalog with descriptions  
+- **View All** - See complete agent catalog with descriptions
 - **Search** - Find agents by keywords or functionality
 - **Agent Details** - Preview system prompts, tools, and metadata
 
@@ -103,7 +103,7 @@ Complete control over your setup:
 The easiest way to get started is with the interactive interface:
 
 ```bash
-npx claude-agents
+npx claude-wizard
 ```
 
 This opens the full menu where you can:
@@ -117,13 +117,13 @@ For automation and scripting:
 
 ```bash
 # Install with specific model and colors
-npx claude-agents --model opus --assign-colors
+npx claude-wizard --model opus --assign-colors
 
-# Install as commands instead of agents  
-npx claude-agents --as-commands
+# Install as commands instead of agents
+npx claude-wizard --as-commands
 
 # Preview what would be installed
-npx claude-agents --dry-run --verbose
+npx claude-wizard --dry-run --verbose
 ```
 
 ### 📁 **Installation Locations**
@@ -137,7 +137,7 @@ npx claude-agents --dry-run --verbose
 
 ## ⚙️ Configuration
 
-The tool automatically creates `~/.claude-agents-config.json` to store:
+The tool automatically creates `~/.claude-wizard-config.json` to store:
 - **Repository configurations** - GitHub repos and access settings
 - **Installation history** - What you've installed and when
 - **User preferences** - Default models, colors, and behaviors
@@ -151,12 +151,12 @@ Add custom agent repositories through the interactive interface or by editing th
   "repositories": [
     {
       "name": "Claude Agents Library",
-      "url": "https://github.com/your-username/agents",
+      "url": "https://github.com/moinsen-dev/agents",
       "branch": "main",
       "default": true
     },
     {
-      "name": "Custom Enterprise Agents", 
+      "name": "Custom Enterprise Agents",
       "url": "https://github.com/company/custom-agents",
       "branch": "main"
     }
@@ -167,7 +167,7 @@ Add custom agent repositories through the interactive interface or by editing th
 ## 🎯 Command Line Reference
 
 ```bash
-Usage: claude-agents [options]
+Usage: claude-wizard [options]
 
 Options:
   -V, --version        output the version number
@@ -230,15 +230,15 @@ Your expertise spans machine learning, software architecture, and DevOps practic
 
 ### Local Setup
 ```bash
-git clone https://github.com/your-username/claude-agents.git
-cd claude-agents
+git clone https://github.com/moinsen-dev/claude-wizard.git
+cd claude-wizard
 npm install
 ```
 
 ### Available Scripts
 ```bash
 npm run dev          # Run the CLI in development mode
-npm test             # Run Jest unit tests  
+npm test             # Run Jest unit tests
 npm run lint         # Run ESLint code quality checks
 ```
 
@@ -266,13 +266,13 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ## 🔗 Related Projects
 
 - **[Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code/sub-agents)** - Official sub-agents documentation
-- **[Claude Agents Library](https://github.com/your-username/agents)** - Default agent collection
+- **[Claude Agents Library](https://github.com/moinsen-dev/agents)** - Default agent collection
 
 ## 📞 Support & Community
 
-- **🐛 Issues**: [GitHub Issues](https://github.com/your-username/claude-agents/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/your-username/claude-agents/discussions)  
-- **📖 Documentation**: [Full Documentation](https://github.com/your-username/claude-agents/wiki)
+- **🐛 Issues**: [GitHub Issues](https://github.com/moinsen-dev/claude-wizard/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/moinsen-dev/claude-wizard/discussions)
+- **📖 Documentation**: [Full Documentation](https://github.com/moinsen-dev/claude-wizard/wiki)
 - **🆘 Claude Code Help**: Use `/help` command in Claude Code
 
 ---
@@ -281,6 +281,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **Made with ❤️ for the Claude Code community**
 
-[⭐ Star this repo](https://github.com/your-username/claude-agents) • [🐛 Report bug](https://github.com/your-username/claude-agents/issues) • [💡 Request feature](https://github.com/your-username/claude-agents/issues)
+[⭐ Star this repo](https://github.com/moinsen-dev/claude-wizard) • [🐛 Report bug](https://github.com/moinsen-dev/claude-wizard/issues) • [💡 Request feature](https://github.com/moinsen-dev/claude-wizard/issues)
 
 </div>

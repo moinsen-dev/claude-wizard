@@ -63,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Dry-run mode for previewing installations
   - Verbose output option
 - **Configuration System**
-  - JSON-based configuration file (`~/.claude-agents-config.json`)
+  - JSON-based configuration file (`~/.claude-wizard-config.json`)
   - Default repository configuration
   - User preferences storage
   - Color distribution tracking

@@ -197,7 +197,7 @@ ${content}`;
 
 // Configuration Management
 async function loadConfig() {
-  const configPath = path.join(os.homedir(), '.claude-agents-config.json');
+  const configPath = path.join(os.homedir(), '.claude-wizard-config.json');
 
   const defaultConfig = {
     defaultInstallPath: path.join(os.homedir(), '.claude', 'agents'),
@@ -240,7 +240,7 @@ async function loadConfig() {
 }
 
 async function saveConfig(config) {
-  const configPath = path.join(os.homedir(), '.claude-agents-config.json');
+  const configPath = path.join(os.homedir(), '.claude-wizard-config.json');
 
   try {
     await fs.writeJSON(configPath, config, { spaces: 2 });

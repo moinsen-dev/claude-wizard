@@ -176,7 +176,7 @@ ehthumbs.db
 Thumbs.db
 
 # User configuration files (contains personal data)
-.claude-agents-config.json
+.claude-wizard-config.json
 
 # Backup files
 *.backup.*
