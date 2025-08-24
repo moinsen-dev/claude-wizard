@@ -624,6 +624,18 @@ class Prompts {
     ]);
     return confirmed;
   }
+
+  async confirmOperation(message, defaultValue = true) {
+    const { confirmed } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmed',
+        message: message,
+        default: defaultValue
+      }
+    ]);
+    return confirmed;
+  }
 }
 
 module.exports = { Prompts };

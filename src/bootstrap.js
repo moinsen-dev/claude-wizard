@@ -141,17 +141,23 @@ async function handleDirectBootstrap(availableTemplates, options) {
     return;
   }
 
-  // Prepare bootstrap configuration
-  const projectConfig = {
-    template: selectedTemplate,
-    name: options.name || await promptProjectName(selectedTemplate),
-    path: options.path || process.cwd(),
+  // Prepare project info for Claude bootstrap
+  const projectName = options.name || await promptProjectName(selectedTemplate);
+  const projectPath = options.path || path.join(process.cwd(), projectName.replace(/\s+/g, '-').toLowerCase());
+
+  const projectInfo = {
+    name: projectName,
+    description: `A new ${selectedTemplate.language} project based on ${selectedTemplate.name}`,
+    path: projectPath
+  };
+
+  const bootstrapOptions = {
     dryRun: options.dryRun || false,
     verbose: options.verbose || false
   };
 
-  // Execute bootstrap
-  await executeBootstrap(projectConfig);
+  // Execute bootstrap with Claude
+  await executeBootstrapWithClaude(selectedTemplate, projectInfo, bootstrapOptions);
 }
 
 async function handleInteractiveBootstrap(availableTemplates, options, prompts, repoManager, templateRepo) {
@@ -269,37 +275,27 @@ async function executeBootstrapWithClaude(template, projectInfo, options = {}) {
       );
 
       if (claudeResult.success) {
-        console.log(chalk.green('\n✅ Project bootstrapped successfully with Claude Code!'));
+        console.log(chalk.green('\n✅ Bootstrap script created successfully!'));
 
-        if (options.verbose && claudeResult.claudeResponse) {
-          console.log(chalk.gray('\nClaude Response:'));
-          if (claudeResult.claudeResponse.content) {
-            console.log(claudeResult.claudeResponse.content);
-          }
+        // Show the script location and instructions
+        if (claudeResult.scriptPath) {
+          console.log(chalk.cyan('\n📄 Script location:'), claudeResult.scriptPath);
         }
 
-        // Show next steps
-        console.log(chalk.cyan('\n📋 Next Steps:'));
-        console.log(chalk.white(`  1. cd ${projectPath}`));
-        console.log(chalk.white('  2. Review the generated files'));
-        console.log(chalk.white('  3. Follow any setup instructions in the README.md'));
-
-        // Option to open Claude Code interactive mode
-        if (!options.dryRun) {
-          console.log(chalk.cyan('\n🚀 Would you like to open Claude Code for this project?'));
-          const { Prompts } = require('./prompts');
-          const prompts = new Prompts();
-
-          const openClaude = await prompts.confirmOperation('Open Claude Code interactive mode?');
-          if (openClaude) {
-            await bootstrapper.openClaudeCode(projectPath, options.verbose);
-          }
+        console.log(chalk.cyan('\n🏁 To complete the bootstrap:'));
+        if (claudeResult.instructions) {
+          claudeResult.instructions.forEach((step, index) => {
+            console.log(chalk.white(`  ${index + 1}. ${step}`));
+          });
         }
+
+        console.log(chalk.gray('\n💡 The script will use Claude Code to generate your project files with proper environment sourcing.'));
+        console.log(chalk.yellow('\n⚠️  Note: You need to run the script manually to complete the bootstrap process.'));
 
         return;
       } else {
-        console.log(chalk.yellow('\n⚠️ Claude Code bootstrap failed, falling back to manual template processing...'));
-        console.log(chalk.gray(`Error: ${claudeResult.error}`));
+        console.log(chalk.yellow('\n⚠️ Bootstrap script generation failed, falling back to manual template processing...'));
+        console.log(chalk.gray(`Error: ${claudeResult.error || 'Unknown error'}`));
       }
     } else {
       if (!claudeAvailable) {

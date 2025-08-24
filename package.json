@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "axios": "^1.11.0",
+    "chalk": "^4.1.2",
     "commander": "^14.0.0",
     "fs-extra": "^11.3.1",
     "inquirer": "^8.2.7",
@@ -31,7 +32,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
-    "chalk": "^4.1.2",
     "eslint": "^9.34.0",
     "jest": "^30.0.5"
   },

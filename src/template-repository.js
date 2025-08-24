@@ -77,7 +77,8 @@ class TemplateRepository extends GitHubAPI {
     if (cached) return cached;
 
     const { owner, repo } = this.parseRepoUrl(repoUrl);
-    const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
+    const encodedBranch = encodeURIComponent(branch);
+    const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodedBranch}?recursive=1`;
 
     try {
       const response = await this.makeRequest(url);
@@ -92,28 +93,49 @@ class TemplateRepository extends GitHubAPI {
   /**
    * Parse GitHub API tree response for template repositories
    * @param {Object} data - GitHub API tree response
-   * @returns {Object} Structure grouped by top-level directories
+   * @returns {Object} Structure grouped by directories (maintaining hierarchy)
    */
   parseTemplateTreeResponse(data) {
     const structure = {};
 
     data.tree.forEach(item => {
       const pathParts = item.path.split('/');
-      const topLevelDir = pathParts[0];
 
       // Only process items that are in subdirectories (not root)
       if (pathParts.length > 1) {
+        // For nested paths like templates/python/file.py, we want to group by:
+        // - Top-level: templates
+        // - Second-level: templates/python
+
+        const topLevelDir = pathParts[0];
+
+        // Add to top-level directory
         if (!structure[topLevelDir]) {
           structure[topLevelDir] = [];
         }
 
-        // Add the item to the appropriate directory
         structure[topLevelDir].push({
           name: pathParts[pathParts.length - 1],
           path: item.path,
           type: item.type,
           url: item.url
         });
+
+        // Also create entries for nested directories (like templates/python)
+        if (pathParts.length > 2) {
+          const nestedDir = pathParts.slice(0, 2).join('/'); // e.g., "templates/python"
+
+          if (!structure[nestedDir]) {
+            structure[nestedDir] = [];
+          }
+
+          structure[nestedDir].push({
+            name: pathParts[pathParts.length - 1],
+            path: item.path,
+            type: item.type,
+            url: item.url
+          });
+        }
       }
     });
 
@@ -129,15 +151,18 @@ class TemplateRepository extends GitHubAPI {
   async parseVibeTemplateStructure(structure, repository) {
     const templates = {};
 
-    // Look for language directories (python/, javascript/, etc.)
+    // Look for language directories that contain BOOTSTRAP.md
+    // Check both root-level directories and templates/ subdirectories
     const languageDirectories = Object.keys(structure).filter(key => {
       const items = structure[key];
       // Check if this directory contains a BOOTSTRAP.md file
-      return items.some(item => item.name === 'BOOTSTRAP.md');
+      return items && items.some(item => item.name === 'BOOTSTRAP.md');
     });
 
     for (const langDir of languageDirectories) {
-      const language = this.normalizeLanguageName(langDir);
+      // Extract language name from path (e.g., 'templates/python' -> 'python')
+      const languageName = langDir.includes('/') ? langDir.split('/').pop() : langDir;
+      const language = this.normalizeLanguageName(languageName);
 
       try {
         const template = await this.parseLanguageTemplate(langDir, repository);

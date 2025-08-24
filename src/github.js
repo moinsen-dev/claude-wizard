@@ -32,7 +32,8 @@ class GitHubAPI {
     if (cached) return cached;
 
     const { owner, repo } = this.parseRepoUrl(repoUrl);
-    const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+    const encodedBranch = encodeURIComponent(branch);
+    const url = `https://raw.githubusercontent.com/${owner}/${repo}/${encodedBranch}/${path}`;
 
     try {
       const response = await axios.get(url);
