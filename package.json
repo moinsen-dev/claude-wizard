@@ -93,8 +93,7 @@
   ],
   "jest": {
     "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/templates/"
+      "/node_modules/"
     ]
   }
 }

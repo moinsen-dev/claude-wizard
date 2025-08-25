@@ -19,8 +19,8 @@ Transform your Claude Code experience with a curated collection of specialized A
 ## ✨ Features
 
 ### 🏗️ **Project Bootstrap** *(New in v0.3.0!)*
-- **Template-Driven Development** - Bootstrap new projects from curated templates
-- **Multiple Languages** - Support for Python, JavaScript, TypeScript, Rust, Go, and more
+- **Template-Driven Development** - Bootstrap new projects from curated [template collection](https://github.com/moinsen-dev/claude-templates)
+- **Multiple Languages** - Support for Python, Flutter, JavaScript, TypeScript, and more
 - **Smart Variable Substitution** - Automatic project name, author, and date replacement
 - **Package Manager Detection** - Automatic setup with npm, yarn, pip, uv, cargo, etc.
 - **Git Integration** - Initialize repositories with proper .gitignore files

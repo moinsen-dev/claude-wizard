@@ -15,7 +15,9 @@ A comprehensive guide for creating bootstrap templates that work with the claude
 
 ## Overview
 
-Bootstrap templates in claude-wizard follow the **vibe-coding-templates** format, enabling automatic project initialization with language-specific setups, dependency management, and development tooling. Templates are organized in GitHub repositories with a specific structure that the system can automatically discover and use.
+Bootstrap templates in claude-wizard follow a structured format, enabling automatic project initialization with language-specific setups, dependency management, and development tooling. Templates are organized in GitHub repositories with a specific structure that the system can automatically discover and use.
+
+The official template collection is maintained at [moinsen-dev/claude-templates](https://github.com/moinsen-dev/claude-templates).
 
 ### Key Concepts
 

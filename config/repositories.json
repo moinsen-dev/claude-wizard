@@ -4,8 +4,17 @@
       "name": "Claude Agents Library",
       "url": "https://github.com/moinsen-dev/agents",
       "branch": "main",
+      "type": "agents",
       "default": true,
       "description": "Claude Code agents collection"
+    },
+    {
+      "name": "Claude Templates",
+      "url": "https://github.com/moinsen-dev/claude-templates",
+      "branch": "develop",
+      "type": "templates",
+      "default": true,
+      "description": "Bootstrap templates for various programming languages and frameworks"
     }
   ],
   "cache": {
