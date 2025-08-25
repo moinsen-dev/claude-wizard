@@ -178,7 +178,8 @@ async function handleInteractiveBootstrap(availableTemplates, options, prompts, 
         // User cancelled template selection, continue the loop to show bootstrap menu
         break;
       }
-      break;
+      // If result is undefined or success is false, also exit to prevent loop
+      return;
     }
 
     case 'back':

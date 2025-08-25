@@ -933,13 +933,13 @@ if [ "$DRY_RUN" = true ]; then
 else
     echo "🚀 APPLY MODE: Proceeding with actual bootstrap execution"
     echo ""
-    read -p "Continue? (y/N): " -n 1 -r
-    echo
+    echo -n "Continue? (y/N): "
+    read -r REPLY
+    echo ""
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo "❌ Bootstrap cancelled by user"
         exit 0
     fi
-    echo ""
 fi
 
 # Initialize git repository if not already present

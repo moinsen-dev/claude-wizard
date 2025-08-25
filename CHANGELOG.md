@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2025-08-25
+
+### Fixed
+- **🐛 Shell Script Read Command Issue** - Resolved bootstrap script failure with 'read -p' command
+  - Replaced problematic `read -p` with compatible `echo -n` + `read -r` pattern
+  - Improved cross-platform shell compatibility for interactive prompts
+  - Fixed 'read:90: -p: no coprocess' error in bootstrap execution
+- **🔄 Bootstrap Flow Exit Issue** - Fixed application continuing after bootstrap completion
+  - Application now properly exits after showing manual script execution message
+  - Improved error handling in interactive bootstrap creation flow
+  - Prevents infinite loop when bootstrap script generation succeeds
+
+### Changed
+- **⚡ Enhanced Cross-Platform Compatibility** - Improved shell script compatibility across different environments
+
 ## [0.3.1] - 2025-08-25
 
 ### Added

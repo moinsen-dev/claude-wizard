@@ -52,8 +52,14 @@ STACK DETECTION (Signals → Keys)
 - Docs: README.md + /docs/** → docs
 
 AGENT SELECTION RULES
-- Always consider: planner, db-architect (if rdbms), ui-architect (if nextjs/react), vercel-ai (if vercelai), supabase (if supabase), stripe (if stripe), test-runner, docs-writer.
-- Prefer minimizing set; include only stacks detected unless forced by --include.
+- Always include: project-planner, core-developer, qa-engineer, technical-writer
+- Include if detected:
+  - database-designer (if database files/configs found)
+  - ui-ux-engineer (if frontend framework detected)
+  - api-designer (if API routes/schemas found)
+  - devops-engineer (if Docker/K8s/CI files found)
+  - security-analyst (for production projects)
+- Prefer comprehensive coverage; include all relevant roles for the project
 
 AGENT NAMING
 - Use prefix from "--name-prefix" (default: "moinsen-").
@@ -73,54 +79,60 @@ FILE-BASED CONTEXT RULES (apply to all agents you write)
   4) Never implement code directly unless the parent explicitly asks.
   5) Never call the task/delegate tool (avoid sub-agent spawning loops).
 
-TEMPLATES (adapt content to the project; keep YAML shape)
+TEMPLATES (generic role-based agents that adapt to any tech stack)
 <<<TEMPLATES
 {
-  "planner": {
+  "project-planner": {
     "name": "project-planner",
-    "description": "Senior planning sub-agent that produces feature plans, risk lists, and execution breakdowns for the parent agent.",
+    "description": "Senior planning expert who creates feature plans, technical roadmaps, and project breakdowns for any technology stack.",
     "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
     "color": "violet"
   },
-  "db-architect": {
-    "name": "database-architect",
-    "description": "Expert relational DB architect for PostgreSQL/MySQL: schema design, migrations, indexing, performance, integrity.",
-    "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
-    "color": "pink"
-  },
-  "ui-architect": {
-    "name": "ui-architect",
-    "description": "Next.js + Tailwind/shadcn UI architect: component architecture, accessibility, design tokens, motion patterns.",
+  "core-developer": {
+    "name": "core-developer",
+    "description": "Implementation expert specializing in writing production-quality code, following best practices and project standards across any programming language and framework.",
     "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
     "color": "blue"
   },
-  "vercelai-expert": {
-    "name": "vercel-ai-sdk-expert",
-    "description": "Vercel AI SDK v5 integration planner: models, streaming, tool use, server actions, migration 4→5.",
+  "database-designer": {
+    "name": "database-designer",
+    "description": "Data architecture expert for any database system: schema design, query optimization, data integrity, migrations, and performance tuning.",
+    "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
+    "color": "pink"
+  },
+  "ui-ux-engineer": {
+    "name": "ui-ux-engineer",
+    "description": "Frontend and user interface expert for any UI framework: component architecture, user experience, accessibility, and responsive design.",
     "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
     "color": "cyan"
   },
-  "supabase-expert": {
-    "name": "supabase-architect",
-    "description": "Supabase planner for auth, RLS policies, storage, edge functions; SQL change management.",
+  "api-designer": {
+    "name": "api-designer",
+    "description": "API architecture expert for any protocol: REST, GraphQL, gRPC design, integration patterns, documentation, and versioning strategies.",
     "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
     "color": "teal"
   },
-  "stripe-architect": {
-    "name": "stripe-billing-architect",
-    "description": "Stripe billing planner: products, prices, webhooks, Checkout/Portal; usage-based pricing.",
+  "devops-engineer": {
+    "name": "devops-engineer",
+    "description": "Infrastructure and deployment expert: containerization, CI/CD, cloud platforms, monitoring, scaling, and automation for any technology stack.",
     "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
     "color": "amber"
   },
-  "qa-runner": {
-    "name": "qa-test-runner",
-    "description": "QA planner: test plan, coverage targets, CI suggestions; can run test discovery only if asked.",
+  "security-analyst": {
+    "name": "security-analyst",
+    "description": "Security expert for any technology: vulnerability assessment, secure coding practices, authentication, authorization, and compliance standards.",
+    "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
+    "color": "red"
+  },
+  "qa-engineer": {
+    "name": "qa-engineer",
+    "description": "Quality assurance expert for any technology: test planning, automation strategies, coverage analysis, and quality standards implementation.",
     "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
     "color": "green"
   },
-  "docs-writer": {
-    "name": "docs-writer",
-    "description": "Docs planner: ADRs, architecture overviews, API docs; ensures diagrams and code examples.",
+  "technical-writer": {
+    "name": "technical-writer",
+    "description": "Documentation expert for any project: technical documentation, API docs, architecture overviews, user guides, and knowledge management.",
     "tools": ["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"],
     "color": "orange"
   }
@@ -131,15 +143,15 @@ YAML RENDERING
 For each selected template:
 - Compose a Markdown file with YAML frontmatter:
 ---
-name: <prefix><name>
+name: ${prefix ? prefix + name : name}
 description: <description>
 examples: |
   <example>
   Context: Detected stack: ${DETECTED_STACK}
   user: "Design a plan for <topic> in this repo."
-  assistant: "I'll use the <prefix><name> sub-agent to research and propose a plan..."
+  assistant: "I'll use the ${prefix ? prefix + name : name} sub-agent to research and propose a plan..."
   <commentary>
-  The <prefix><name> agent focuses on planning/research and writes results to doccloud/tasks/.
+  The ${prefix ? prefix + name : name} agent focuses on planning/research and writes results to doccloud/tasks/.
   </commentary>
   </example>
 tools: <comma-separated tool list>
@@ -147,27 +159,108 @@ model: <modelName>
 color: <color>
 ---
 Then body text:
-- “You are an elite …” (role), deliverables, file-based context steps (1–4), strict rule: “Do NOT implement; plan/research only unless parent explicitly asks.”
+- "You are an elite [ROLE] expert specializing in [DETECTED_TECHNOLOGIES]..."
+- Include "## Detected Tech Stack" section with languages, frameworks, tools
+- Define role-specific deliverables and responsibilities
+- Include file-based context steps (1–4)
+- Adapt guidance based on detected technology stack
+- Rule: "Do NOT implement; plan/research only unless parent explicitly asks."
 
 STEPS
 1) Parse args.
 2) Detect stack via LS/Glob/Grep on the repo.
 3) Decide agent keys with rules:
-   - Always "planner".
-   - If rdbms → "db-architect"
-   - If nextjs → "ui-architect"
-   - If vercelai → "vercelai-expert"
-   - If supabase → "supabase-expert"
-   - If stripe → "stripe-architect"
-   - Always "qa-runner" and "docs-writer"
+   - Always include: "project-planner", "core-developer", "qa-engineer", "technical-writer"
+   - If database files/configs → "database-designer"
+   - If frontend framework → "ui-ux-engineer"
+   - If API routes/schemas → "api-designer"
+   - If Docker/K8s/CI → "devops-engineer"
+   - If production project → "security-analyst"
    Apply --include/--exclude.
 4) Ensure `.claude/agents/` exists; create files (skip or overwrite with --force).
 5) Create/append `.claude/cloud.md` sections:
-   - “## Agents (generated on <ISO>)”
-   - “## Context rules”
-6) Print a summary like:
-   - “Created: .claude/agents/<name>.md …”
-   - “Skipped (exists): …”
-   - “Next: Try ‘Use the <agent-name> agent to…’”
+   - "## Agents (generated on <ISO>)"
+   - "## Context rules"
+6) Generate workflow orchestrator command:
+   - Create `.claude/commands/workflow.md`
+   - Include references to all generated agents
+   - Set up workflow type routing (document, test, plan, implement, deploy, debug)
+   - Configure multi-agent coordination through project-planner
+7) Print a summary like:
+   - "Created: .claude/agents/<name>.md …"
+   - "Created: .claude/commands/workflow.md"
+   - "Skipped (exists): …"
+   - "Next: Try 'claude /workflow plan' or 'claude /workflow implement'"
+
+WORKFLOW COMMAND GENERATION
+
+After creating all agents, generate a workflow orchestrator command at `.claude/commands/workflow.md`:
+
+```markdown
+# /workflow
+
+You are the **Development Workflow Orchestrator** for this project. You coordinate specialized agents to handle different development workflows efficiently.
+
+## Project Context
+Read `.claude/CLAUDE.md` first to understand the current project state, architecture, and requirements.
+
+## Available Agents
+${GENERATED_AGENTS_LIST}
+
+## Workflow Types (from $ARGUMENTS)
+
+Parse the first argument to determine workflow type:
+
+### 1. "document" - Documentation Workflow
+- **Single Agent**: Use technical-writer agent
+- **Purpose**: Create/update documentation, API docs, architecture overviews
+- **Example**: "/workflow document API endpoints"
+
+### 2. "test" - Testing Workflow  
+- **Single Agent**: Use qa-engineer agent
+- **Purpose**: Test planning, automation, coverage analysis
+- **Example**: "/workflow test user authentication"
+
+### 3. "plan" - Planning Workflow
+- **Single Agent**: Use project-planner agent  
+- **Purpose**: Feature planning, technical roadmaps, project breakdowns
+- **Example**: "/workflow plan payment integration"
+
+### 4. "implement" - Implementation Workflow
+- **Multi-Agent Coordination**: Use project-planner to coordinate relevant specialists
+- **Agents**: core-developer + context-specific agents (database-designer, api-designer, etc.)
+- **Purpose**: Code implementation, feature development
+- **Example**: "/workflow implement user dashboard"
+
+### 5. "deploy" - Deployment Workflow
+- **Conditional Agent**: Use devops-engineer (if available), fallback to core-developer
+- **Purpose**: Deployment planning, CI/CD, infrastructure
+- **Example**: "/workflow deploy staging environment"
+
+### 6. "debug" - Debugging Workflow
+- **Multi-Agent Coordination**: Use project-planner to coordinate core-developer + qa-engineer
+- **Purpose**: Issue investigation, bug fixing, performance optimization
+- **Example**: "/workflow debug performance issues"
+
+## Execution Logic
+
+1. **Context Loading**: Always read `.claude/CLAUDE.md` for project context
+2. **Agent Selection**: Based on workflow type, select appropriate agent(s)
+3. **Task Delegation**:
+   - **Single agent tasks**: "Use the [agent-name] agent to [task]..."
+   - **Multi-agent tasks**: "Use the project-planner agent to coordinate [relevant-agents] for [task]..."
+4. **Fallback**: If specific agents don't exist, use available alternatives
+
+## Agent Availability Check
+Before delegation, verify agents exist in `.claude/agents/` directory. Adapt instructions based on actually available agents.
+
+## Usage Examples
+- \`claude /workflow plan "add user authentication"\`
+- \`claude /workflow implement "payment processing system"\`
+- \`claude /workflow test "API endpoints"\`
+- \`claude /workflow debug "slow database queries"\`
+```
+
+Replace ${GENERATED_AGENTS_LIST} with actual generated agent names and roles.
 
 Now execute the workflow.
