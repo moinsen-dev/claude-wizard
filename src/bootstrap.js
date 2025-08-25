@@ -1,10 +1,11 @@
 const chalk = require('chalk');
-const ora = require('ora');
 const path = require('path');
 const { TemplateRepository } = require('./template-repository');
 const { RepositoryManager } = require('./repository-manager');
 const { TemplateBootstrapper } = require('./template-bootstrapper');
 const { loadConfig } = require('./utils');
+const { warningManager } = require('./warning-manager');
+const { UIUtils } = require('./ui-utils');
 
 async function bootstrap(options = {}) {
   console.log(chalk.blue.bold('\n🏗️ Claude Wizard - Project Bootstrap\n'));
@@ -14,8 +15,8 @@ async function bootstrap(options = {}) {
     const config = await loadConfig();
     const repoManager = new RepositoryManager(config.repositories);
     const templateRepo = new TemplateRepository();
-    const { Prompts } = require('./prompts');
-    const prompts = new Prompts();
+    const { ClackPrompts } = require('./prompts-clack');
+    const prompts = new ClackPrompts();
 
     // Handle --list-templates option
     if (options.listTemplates) {
@@ -24,13 +25,15 @@ async function bootstrap(options = {}) {
     }
 
     // Fetch templates from configured repositories
-    const spinner = ora('Fetching available templates...').start();
+    const { spinner } = require('@clack/prompts');
+    const s = spinner();
+    s.start('Fetching available templates...');
     let availableTemplates;
     try {
       const templateRepositories = repoManager.getByType('templates');
 
       if (templateRepositories.length === 0) {
-        spinner.fail('No template repositories configured');
+        s.stop('No template repositories configured');
         console.log(chalk.yellow('\nTo add template repositories, run:'));
         console.log(chalk.white('  claude-wizard configure'));
         return;
@@ -40,9 +43,12 @@ async function bootstrap(options = {}) {
       const totalTemplates = Object.values(availableTemplates)
         .reduce((sum, templates) => sum + templates.length, 0);
 
-      spinner.succeed(`Found ${totalTemplates} templates across ${Object.keys(availableTemplates).length} languages`);
+      s.stop(`Found ${totalTemplates} templates across ${Object.keys(availableTemplates).length} languages`);
+
+      // Display any warnings collected during template discovery
+      warningManager.displayWarnings();
     } catch (error) {
-      spinner.fail('Failed to fetch templates');
+      s.stop('Failed to fetch templates');
       throw error;
     }
 
@@ -74,42 +80,29 @@ async function bootstrap(options = {}) {
 }
 
 async function listAllTemplates(repoManager, templateRepo) {
-  console.log(chalk.cyan('📋 Available Templates\n'));
-
   try {
     const templateRepositories = repoManager.getByType('templates');
 
     if (templateRepositories.length === 0) {
-      console.log(chalk.yellow('No template repositories configured.'));
+      console.log(UIUtils.formatWarning('No template repositories configured.'));
       return;
     }
 
     const availableTemplates = await templateRepo.discoverTemplates(templateRepositories);
 
+    // Display any warnings from template discovery
+    warningManager.displayWarnings();
+
     if (Object.keys(availableTemplates).length === 0) {
-      console.log(chalk.yellow('No templates found in configured repositories.'));
+      console.log(UIUtils.formatWarning('No templates found in configured repositories.'));
       return;
     }
 
-    // Display templates grouped by language
-    Object.entries(availableTemplates).forEach(([language, templates]) => {
-      console.log(chalk.white.bold(`\n${language}:`));
-      templates.forEach(template => {
-        console.log(chalk.gray(`  ${template.name}`));
-        console.log(chalk.gray(`    ${template.description}`));
-        console.log(chalk.gray(`    Repository: ${template.repository.name}`));
-        if (template.features && template.features.length > 0) {
-          console.log(chalk.gray(`    Features: ${template.features.slice(0, 3).join(', ')}${template.features.length > 3 ? '...' : ''}`));
-        }
-      });
-    });
-
-    console.log(chalk.white('\nUsage:'));
-    console.log(chalk.gray('  claude-wizard bootstrap --template <template-name>'));
-    console.log(chalk.gray('  claude-wizard bootstrap  # Interactive selection'));
+    // Use the new formatted display
+    console.log(UIUtils.formatTemplatesList(availableTemplates));
 
   } catch (error) {
-    console.error(chalk.red('Failed to list templates:'), error.message);
+    console.error(UIUtils.formatError(`Failed to list templates: ${error.message}`));
   }
 }
 
@@ -148,7 +141,8 @@ async function handleDirectBootstrap(availableTemplates, options) {
   const projectInfo = {
     name: projectName,
     description: `A new ${selectedTemplate.language} project based on ${selectedTemplate.name}`,
-    path: projectPath
+    path: projectPath,
+    prdFile: options.prd || null
   };
 
   const bootstrapOptions = {
@@ -161,6 +155,10 @@ async function handleDirectBootstrap(availableTemplates, options) {
 }
 
 async function handleInteractiveBootstrap(availableTemplates, options, prompts, repoManager, templateRepo) {
+  // Initialize the clack interface if using ClackPrompts
+  if (prompts.initializeInterface) {
+    prompts.initializeInterface();
+  }
   let action = '';
 
   do {
@@ -171,9 +169,17 @@ async function handleInteractiveBootstrap(availableTemplates, options, prompts, 
       await listAllTemplates(repoManager, templateRepo);
       break;
 
-    case 'create':
-      await handleInteractiveProjectCreation(availableTemplates, options, prompts);
+    case 'create': {
+      const result = await handleInteractiveProjectCreation(availableTemplates, options, prompts);
+      if (result && result.success) {
+        // Project created successfully, exit the loop
+        return;
+      } else if (result && result.cancelled) {
+        // User cancelled template selection, continue the loop to show bootstrap menu
+        break;
+      }
       break;
+    }
 
     case 'back':
       return;
@@ -197,14 +203,22 @@ async function handleInteractiveProjectCreation(availableTemplates, options, pro
     // Select template
     const selectedTemplate = await prompts.selectTemplate(availableTemplates);
     if (selectedTemplate === 'back') {
-      return;
+      return { success: false, cancelled: true };
     }
+
+    // Ask for PRD file (optional)
+    const prdFile = await prompts.getPRDFile();
+
+    // Ask about auto-generating agents
+    const generateAgents = await prompts.confirmGenerateAgents();
 
     // Prepare project info
     const projectInfo = {
       name: projectName,
       description: projectDescription,
-      path: projectPath
+      path: projectPath,
+      prdFile: prdFile,
+      generateAgents: generateAgents
     };
 
     // Confirm bootstrap
@@ -224,7 +238,7 @@ async function handleInteractiveProjectCreation(availableTemplates, options, pro
 
 async function executeBootstrapWithClaude(template, projectInfo, options = {}) {
   const bootstrapper = new TemplateBootstrapper();
-  const { name, description, path: projectPath } = projectInfo;
+  const { name, description, path: projectPath, prdFile, generateAgents } = projectInfo;
 
   console.log(chalk.cyan(`\n🚀 Creating ${template.language} project: ${name}\n`));
 
@@ -271,7 +285,11 @@ async function executeBootstrapWithClaude(template, projectInfo, options = {}) {
         name,
         projectPath,
         description,
-        { verbose: options.verbose }
+        {
+          verbose: options.verbose,
+          prdFile: prdFile,
+          generateAgents: generateAgents
+        }
       );
 
       if (claudeResult.success) {
@@ -292,7 +310,7 @@ async function executeBootstrapWithClaude(template, projectInfo, options = {}) {
         console.log(chalk.gray('\n💡 The script will use Claude Code to generate your project files with proper environment sourcing.'));
         console.log(chalk.yellow('\n⚠️  Note: You need to run the script manually to complete the bootstrap process.'));
 
-        return;
+        return { success: true };
       } else {
         console.log(chalk.yellow('\n⚠️ Bootstrap script generation failed, falling back to manual template processing...'));
         console.log(chalk.gray(`Error: ${claudeResult.error || 'Unknown error'}`));
@@ -311,8 +329,11 @@ async function executeBootstrapWithClaude(template, projectInfo, options = {}) {
       path: projectPath,
       description,
       dryRun: options.dryRun,
-      verbose: options.verbose
+      verbose: options.verbose,
+      prdFile: prdFile
     });
+
+    return { success: true };
 
   } catch (error) {
     console.error(chalk.red(`\n❌ Bootstrap failed: ${error.message}`));
@@ -320,11 +341,13 @@ async function executeBootstrapWithClaude(template, projectInfo, options = {}) {
     if (options.verbose) {
       console.error(error.stack);
     }
+
+    return { success: false };
   }
 }
 
 async function executeBootstrap(projectConfig) {
-  const { template, name, path, dryRun, verbose } = projectConfig;
+  const { template, name, path, dryRun, verbose, prdFile } = projectConfig;
   const bootstrapper = new TemplateBootstrapper();
 
   console.log(chalk.cyan(`\n🚀 Bootstrapping ${template.name}\n`));
@@ -345,7 +368,8 @@ async function executeBootstrap(projectConfig) {
       dryRun,
       verbose,
       autoInstall: true,
-      initGit: true
+      initGit: true,
+      prdFile
     });
 
     if (result.success) {

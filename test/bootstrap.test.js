@@ -6,14 +6,14 @@ jest.mock('../src/template-repository');
 jest.mock('../src/template-bootstrapper');
 jest.mock('../src/utils');
 
-// Mock ora spinner
+// Mock @clack/prompts spinner
 const mockSpinner = {
   start: jest.fn().mockReturnThis(),
-  succeed: jest.fn().mockReturnThis(),
-  fail: jest.fn().mockReturnThis(),
   stop: jest.fn().mockReturnThis()
 };
-jest.mock('ora', () => jest.fn(() => mockSpinner));
+jest.mock('@clack/prompts', () => ({
+  spinner: jest.fn(() => mockSpinner)
+}));
 
 const { RepositoryManager } = require('../src/repository-manager');
 const { TemplateRepository } = require('../src/template-repository');
@@ -29,8 +29,6 @@ describe('bootstrap', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSpinner.start.mockClear();
-    mockSpinner.succeed.mockClear();
-    mockSpinner.fail.mockClear();
     mockSpinner.stop.mockClear();
 
     // Mock process.exit to prevent test termination
@@ -330,7 +328,7 @@ describe('bootstrap', () => {
 
       await bootstrap({});
 
-      expect(mockSpinner.fail).toHaveBeenCalledWith('No template repositories configured');
+      expect(mockSpinner.stop).toHaveBeenCalledWith('No template repositories configured');
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('claude-wizard configure')
       );

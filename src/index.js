@@ -2,19 +2,23 @@ const chalk = require('chalk');
 const ora = require('ora');
 const { GitHubAPI } = require('./github.js');
 const { Installer } = require('./installer.js');
-const { Prompts } = require('./prompts.js');
+const { ClackPrompts } = require('./prompts-clack.js');
 const { loadConfig, saveConfig } = require('./utils.js');
 const { bootstrap } = require('./bootstrap.js');
+const { warningManager } = require('./warning-manager');
 
 async function main(cliOptions = {}) {
-  console.log(chalk.blue.bold('\n🤖 Claude Agents CLI\n'));
+  // Header will be handled by ClackPrompts intro
 
   try {
     // Load configuration
     const config = await loadConfig();
     const github = new GitHubAPI();
     const installer = new Installer();
-    const prompts = new Prompts();
+    const prompts = new ClackPrompts(); // Use the new Clack prompts
+
+    // Clear any previous warnings
+    warningManager.clearWarnings();
 
     // Override CLI options with command line flags
     const options = {
@@ -25,8 +29,10 @@ async function main(cliOptions = {}) {
       verbose: cliOptions.verbose
     };
 
-    // Fetch agents from default repository
-    const spinner = ora('Fetching latest agents from GitHub...').start();
+    // Remove header since ClackPrompts handles intro
+    // const spinner = ora('Fetching latest agents from GitHub...').start();
+    const s = prompts.createSpinner();
+    s.start('Fetching latest agents from GitHub...');
 
     const defaultRepo = config.repositories.find(r => r.default) || config.repositories[0];
     if (!defaultRepo) {
@@ -37,9 +43,12 @@ async function main(cliOptions = {}) {
     try {
       availableAgents = await github.fetchRepositoryStructure(defaultRepo.url, defaultRepo.branch);
       const totalAgents = Object.values(availableAgents).reduce((sum, agents) => sum + agents.length, 0);
-      spinner.succeed(`Found ${totalAgents} agents across ${Object.keys(availableAgents).length} departments`);
+      s.stop(`Found ${totalAgents} agents across ${Object.keys(availableAgents).length} departments`);
+
+      // Display any warnings collected during agent discovery
+      warningManager.displayWarnings();
     } catch (error) {
-      spinner.fail('Failed to fetch agents from GitHub');
+      s.stop('Failed to fetch agents from GitHub');
       throw error;
     }
 

@@ -32,7 +32,8 @@ class TemplateBootstrapper {
       dryRun = false,
       verbose = false,
       autoInstall = true,
-      initGit = true
+      initGit = true,
+      prdFile = null
     } = options;
 
     const result = {
@@ -114,7 +115,13 @@ class TemplateBootstrapper {
         );
       }
 
-      // Step 7: Initialize Git repository
+      // Step 7: Copy PRD file if provided
+      if (prdFile) {
+        await this.copyPRDFile(prdFile, fullProjectPath, verbose);
+        result.steps.push(`✓ Copied PRD file: ${path.basename(prdFile)}`);
+      }
+
+      // Step 8: Initialize Git repository
       if (initGit) {
         await this.initializeGitRepository(fullProjectPath, verbose);
         result.steps.push('✓ Initialized Git repository');
@@ -529,6 +536,52 @@ class TemplateBootstrapper {
   }
 
   /**
+   * Copy Product Requirement Document (PRD) file to project directory
+   * @param {string} prdFilePath - Path to the PRD file
+   * @param {string} projectPath - Project directory path
+   * @param {boolean} verbose - Show detailed output
+   */
+  async copyPRDFile(prdFilePath, projectPath, verbose = false) {
+    const spinner = verbose ? null : ora('Copying PRD file...').start();
+
+    try {
+      // Validate PRD file exists
+      if (!(await fs.pathExists(prdFilePath))) {
+        throw new Error(`PRD file not found: ${prdFilePath}`);
+      }
+
+      // Get file stats to check if it's a file
+      const stats = await fs.stat(prdFilePath);
+      if (!stats.isFile()) {
+        throw new Error(`PRD path is not a file: ${prdFilePath}`);
+      }
+
+      // Extract filename and create destination path
+      const fileName = path.basename(prdFilePath);
+      const destinationPath = path.join(projectPath, fileName);
+
+      if (verbose) {
+        console.log(chalk.cyan(`[PRD] Copying file: ${prdFilePath}`));
+        console.log(chalk.cyan(`[PRD] Destination: ${destinationPath}`));
+      }
+
+      // Copy the PRD file
+      await fs.copy(prdFilePath, destinationPath);
+
+      if (spinner) {
+        spinner.succeed(`PRD file copied: ${fileName}`);
+      } else if (verbose) {
+        console.log(chalk.green(`[PRD] ✔ PRD file copied successfully: ${fileName}`));
+      }
+    } catch (error) {
+      if (spinner) {
+        spinner.fail('Failed to copy PRD file');
+      }
+      throw new Error(`PRD copy failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Get next steps for the user after bootstrap
    * @param {Object} template - Template metadata
    * @param {string} projectName - Project name
@@ -597,6 +650,7 @@ class TemplateBootstrapper {
     description = null,
     options = {}
   ) {
+    const { prdFile = null } = options;
     if (!(await this.isClaudeCliAvailable())) {
       throw new Error(
         'Claude CLI is not available. Please install Claude Code CLI first.'
@@ -607,40 +661,36 @@ class TemplateBootstrapper {
     const templateRepo = new TemplateRepository();
     const templateUrl = templateRepo.getTemplateUrl(template);
 
-    // Prepare the prompt for Claude with full template context
-    let prompt = `Please bootstrap the current directory as a ${template.language} project called "${projectName}"`;
+    // Prepare the prompt for Claude with readable multi-line structure
+    const promptParts = [
+      `Please bootstrap the current directory as a ${template.language} project called "${projectName}"`,
+      description ? `with description "${description}"` : null,
 
-    if (description) {
-      prompt += ` with description "${description}"`;
-    }
+      // Template location information
+      `This template is located at: ${template.repository.url} in the ${template.path}/ directory.`,
+      `Please fetch the template structure from ${templateUrl}`,
 
-    // Provide Claude with comprehensive template information
-    prompt += `. This template is located at: ${template.repository.url} in the ${template.path}/ directory.`;
-    prompt += ` Please fetch the template structure from ${templateUrl}`;
+      // Template features and dependencies
+      template.features && template.features.length > 0
+        ? `Template features: ${template.features.slice(0, 5).join(', ')}.`
+        : null,
+      template.dependencies && template.dependencies.length > 0
+        ? `Required dependencies: ${template.dependencies.slice(0, 5).join(', ')}.`
+        : null,
 
-    // Include template features and dependencies for better context
-    if (template.features && template.features.length > 0) {
-      prompt += `. Template features: ${template.features
-        .slice(0, 5)
-        .join(', ')}.`;
-    }
+      // Core requirements
+      'Follow the BOOTSTRAP.md instructions to create the complete project structure with all necessary files.',
+      'Replace all template variables like {{project-name}}, {{project_name}}, {{ProjectName}}, {{author}}, {{year}} with appropriate values.',
+      'Set up configuration files, include proper .gitignore and README.md files, and configure any required dependencies or build tools.',
+      'Create all files and directories directly in the current working directory (do not create a new project subdirectory).',
+      'Create a fully functional project structure ready for development with proper variable substitution in all files and directories.',
 
-    if (template.dependencies && template.dependencies.length > 0) {
-      prompt += ` Required dependencies: ${template.dependencies
-        .slice(0, 5)
-        .join(', ')}.`;
-    }
+      // PRD file information if provided
+      prdFile ? `A Product Requirement Document (PRD) file will be available at ${prdFile} - reference this for project requirements and implementation details.` : null
+    ];
 
-    prompt +=
-      ' Follow the BOOTSTRAP.md instructions to create the complete project structure with all necessary files.';
-    prompt +=
-      ' Replace all template variables like {{project-name}}, {{project_name}}, {{ProjectName}}, {{author}}, {{year}} with appropriate values.';
-    prompt +=
-      ' Set up configuration files, include proper .gitignore and README.md files, and configure any required dependencies or build tools.';
-    prompt +=
-      ' Create all files and directories directly in the current working directory (do not create a new project subdirectory).';
-    prompt +=
-      ' Create a fully functional project structure ready for development with proper variable substitution in all files and directories.';
+    // Filter out null entries for cleaner prompt parts
+    const filteredPromptParts = promptParts.filter(part => part !== null);
 
     const spinner = options.verbose
       ? null
@@ -649,32 +699,35 @@ class TemplateBootstrapper {
       ).start();
 
     try {
-      // Use single quotes to avoid shell interpretation of special characters
-      const escapedPrompt = prompt.replace(/'/g, '\'"\'"\'');
-      const claudeCommand = `claude --dangerously-skip-permissions --print --verbose --output-format stream-json '${escapedPrompt}'`;
 
       if (options.verbose) {
-        console.log(chalk.cyan('\n[CLAUDE CLI] Executing command:'));
-        console.log(chalk.gray(claudeCommand));
+        console.log(chalk.cyan('\n[CLAUDE CLI] Generating multi-line Claude command:'));
+        console.log(chalk.gray('claude --dangerously-skip-permissions \\'));
+        console.log(chalk.gray('      --print \\'));
+        console.log(chalk.gray('      --verbose \\'));
+        console.log(chalk.gray('      --output-format stream-json \\'));
+        console.log(chalk.gray('      "<prompt>"'));
         console.log(
           chalk.cyan(`[CLAUDE CLI] Working directory: ${projectPath}`)
         );
         console.log(
-          chalk.cyan('\n[CLAUDE CLI] Full prompt being sent to Claude:')
+          chalk.cyan('\n[CLAUDE CLI] Prompt sections being sent to Claude:')
         );
         console.log(chalk.gray('─'.repeat(80)));
-        console.log(chalk.gray(prompt));
+        filteredPromptParts.forEach((part, index) => {
+          console.log(chalk.gray(`${index + 1}. ${part}`));
+        });
         console.log(chalk.gray('─'.repeat(80)));
         console.log(
-          chalk.cyan('[CLAUDE CLI] Starting streaming execution...\n')
+          chalk.cyan('[CLAUDE CLI] Generating bootstrap script...\n')
         );
       }
 
       // Generate bootstrap script for user to run manually
       const claudeResult = await this.generateClaudeScript(
-        claudeCommand,
+        filteredPromptParts, // Pass filtered prompt parts
         projectPath,
-        options
+        { ...options, prdFile }
       );
 
       if (spinner) {
@@ -768,15 +821,15 @@ class TemplateBootstrapper {
 
   /**
    * Generate a shell script for the user to execute Claude CLI manually
-   * @param {string} command - Claude CLI command to execute
+   * @param {Array} promptParts - Array of prompt parts for readable formatting
    * @param {string} workingDir - Working directory
    * @param {Object} options - Execution options
    * @returns {Object} Script generation result
    */
   async generateClaudeScript(
-    command,
+    promptParts,
     workingDir,
-    options = { verbose: true }
+    options = { verbose: true, prdFile: null }
   ) {
     const fs = require('fs');
     const path = require('path');
@@ -787,13 +840,58 @@ class TemplateBootstrapper {
       // Create the bootstrap script in the project directory
       const scriptPath = path.join(workingDir, 'bootstrap-with-claude.sh');
 
+      // Prepare shell script variables
+      const generateAgentsFlag = options.generateAgents ? 'true' : 'false';
+
       // Create comprehensive shell script
       const shellScript = `#!/bin/zsh
 # Bootstrap script generated by Claude Wizard
 # This script will use Claude Code to bootstrap your project
 
+# Parse command line arguments
+DRY_RUN=true  # Default to dry run for safety
+APPLY_CHANGES=false
+GENERATE_AGENTS=${generateAgentsFlag}
+
+for arg in "$@"; do
+    case $arg in
+        --apply)
+            DRY_RUN=false
+            APPLY_CHANGES=true
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            APPLY_CHANGES=false
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [--dry-run|--apply]"
+            echo ""
+            echo "Options:"
+            echo "  --dry-run    Show what would be done without making changes (default)"
+            echo "  --apply      Actually execute the bootstrap and make changes"
+            echo "  --help       Show this help message"
+            echo ""
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 echo "🤖 Claude Code Project Bootstrap"
 echo "================================"
+
+if [ "$DRY_RUN" = true ]; then
+    echo "🔍 DRY RUN MODE - No changes will be made"
+    echo "Use --apply to actually execute the bootstrap"
+else
+    echo "⚡ APPLY MODE - Changes will be made to your project"
+fi
 echo ""
 
 # Check if Claude CLI is available
@@ -820,6 +918,30 @@ echo "✅ Claude CLI found: $(which claude)"
 echo "📁 Working directory: $(pwd)"
 echo ""
 
+# Show important warnings about execution time and token usage
+echo "⚠️  IMPORTANT NOTICES:"
+echo "   • This process will use Claude Code tokens from your account"
+echo "   • Execution time varies based on template complexity and PRD size:"
+echo "     - Small templates: ~2-5 minutes"
+echo "     - Large templates with detailed PRD: up to 1 hour"
+echo "   • The process may appear to hang - this is normal for complex projects"
+echo ""
+
+if [ "$DRY_RUN" = true ]; then
+    echo "🔍 DRY RUN: Showing what would be executed without making changes"
+    echo ""
+else
+    echo "🚀 APPLY MODE: Proceeding with actual bootstrap execution"
+    echo ""
+    read -p "Continue? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ Bootstrap cancelled by user"
+        exit 0
+    fi
+    echo ""
+fi
+
 # Initialize git repository if not already present
 if [ ! -d ".git" ]; then
     echo "🔧 Initializing git repository..."
@@ -833,6 +955,24 @@ else
     echo "✅ Git repository already exists"
     echo ""
 fi
+
+${options.prdFile ? `
+# Copy PRD file if provided
+PRD_FILE="${options.prdFile}"
+if [ -n "$PRD_FILE" ] && [ -f "$PRD_FILE" ]; then
+    echo "📋 Copying Product Requirement Document..."
+    PRD_BASENAME=$(basename "$PRD_FILE")
+    if cp "$PRD_FILE" "./$PRD_BASENAME"; then
+        echo "✅ PRD copied: $PRD_BASENAME"
+    else
+        echo "⚠️  Failed to copy PRD file (continuing anyway)"
+    fi
+    echo ""
+elif [ -n "$PRD_FILE" ]; then
+    echo "⚠️  PRD file not found: $PRD_FILE (continuing anyway)"
+    echo ""
+fi
+` : ''}
 
 # Function to parse and display Claude output nicely
 parse_claude_output() {
@@ -867,15 +1007,58 @@ parse_claude_output() {
     fi
 }
 
-# Execute the Claude command
-echo "🚀 Running Claude to bootstrap your project..."
-if [ "$USE_JQ" = true ]; then
-    echo "📊 Parsing output with jq for better readability..."
-fi
+# Build Claude prompt with readable sections
+echo "📝 Claude prompt sections:"
+${promptParts.map((part, index) => `echo "  ${index + 1}. ${part.substring(0, 60)}${part.length > 60 ? '...' : ''}"`).join('\n')}
 echo ""
 
-# Run Claude with streaming JSON and parse output
-if ${command} | parse_claude_output; then
+# Combine all prompt parts into a single command
+CLAUDE_PROMPT="${promptParts.map(part => part.replace(/"/g, '\\"')).join(' ')}"
+
+if [ "$DRY_RUN" = true ]; then
+    echo "🔍 DRY RUN: Would execute the following Claude command:"
+    echo ""
+    echo "claude --dangerously-skip-permissions \\\\"
+    echo "       --print \\\\"
+    echo "       --verbose \\\\"
+    echo "       --output-format stream-json \\\\"
+    echo '       "$CLAUDE_PROMPT"'
+    echo ""
+    echo "📊 Prompt preview (first 200 chars):"
+    echo "\${CLAUDE_PROMPT:0:200}..."
+    echo ""
+    echo "🎯 After Claude execution, would also run:"
+    echo "   claude code init --auto-confirm"
+    
+    if [ "$GENERATE_AGENTS" = true ]; then
+        echo ""
+        echo "🤖 Would also auto-generate project agents:"
+        echo "   1. Download generate-agents command from GitHub"
+        echo "   2. Save to .claude/commands/generate-agents.md"
+        echo "   3. Run: claude /generate-agents"
+        echo "   4. Create tailored agents in .claude/agents/"
+    fi
+    
+    echo ""
+    echo "✅ DRY RUN COMPLETE - No changes were made"
+    echo ""
+    echo "💡 To actually execute the bootstrap:"
+    echo "   ./bootstrap-with-claude.sh --apply"
+    exit 0
+else
+    echo "🚀 Executing Claude to bootstrap your project..."
+    if [ "$USE_JQ" = true ]; then
+        echo "📊 Parsing output with jq for better readability..."
+    fi
+    echo ""
+fi
+
+# Execute Claude with multi-line formatted command for readability (only in apply mode)
+if claude --dangerously-skip-permissions \\
+         --print \\
+         --verbose \\
+         --output-format stream-json \\
+         "$CLAUDE_PROMPT" | parse_claude_output; then
     echo ""
     echo "🎯 Now initializing Claude Code in your project..."
     echo ""
@@ -883,13 +1066,106 @@ if ${command} | parse_claude_output; then
     # Initialize Claude Code in the project directory
     if claude --dangerously-skip-permissions --print --verbose --output-format stream-json "/init" | parse_claude_output; then
         echo ""
+        
+        # Auto-generate project agents if requested
+        if [ "$GENERATE_AGENTS" = true ]; then
+            echo "🤖 Auto-generating project-specific agents..."
+            echo ""
+            
+            # Create commands directory if it doesn't exist
+            mkdir -p .claude/commands
+            
+            # Download generate-agents command from Claude Wizard GitHub repository
+            GITHUB_URL="https://raw.githubusercontent.com/moinsen-dev/claude-wizard/main/.claude/commands/generate-agents.md"
+            GENERATE_AGENTS_TARGET=".claude/commands/generate-agents.md"
+            
+            echo "📥 Downloading generate-agents command from GitHub..."
+            if command -v curl &> /dev/null; then
+                if curl -s -L -o "$GENERATE_AGENTS_TARGET" "$GITHUB_URL"; then
+                    if [ -s "$GENERATE_AGENTS_TARGET" ]; then
+                        echo "✅ Downloaded generate-agents command"
+                        echo ""
+                        
+                        # Execute agent generation
+                        echo "🔍 Analyzing project structure to generate tailored agents..."
+                        if claude --dangerously-skip-permissions \\
+                                 --print \\
+                                 --verbose \\
+                                 --output-format stream-json \\
+                                 "/generate-agents" | parse_claude_output; then
+                            echo ""
+                            echo "✅ Project-specific agents generated successfully!"
+                            echo "📁 Agents available in .claude/agents/"
+                            echo ""
+                        else
+                            echo ""
+                            echo "⚠️  Agent generation failed (you can run '/generate-agents' manually later)"
+                            echo ""
+                        fi
+                    else
+                        echo "⚠️  Downloaded file is empty, skipping agent generation"
+                        echo ""
+                    fi
+                else
+                    echo "⚠️  Failed to download generate-agents command from GitHub"
+                    echo "   URL: $GITHUB_URL"
+                    echo "   (continuing without agent generation)"
+                    echo ""
+                fi
+            elif command -v wget &> /dev/null; then
+                if wget -q -O "$GENERATE_AGENTS_TARGET" "$GITHUB_URL"; then
+                    if [ -s "$GENERATE_AGENTS_TARGET" ]; then
+                        echo "✅ Downloaded generate-agents command"
+                        echo ""
+                        
+                        # Execute agent generation
+                        echo "🔍 Analyzing project structure to generate tailored agents..."
+                        if claude --dangerously-skip-permissions \\
+                                 --print \\
+                                 --verbose \\
+                                 --output-format stream-json \\
+                                 "/generate-agents" | parse_claude_output; then
+                            echo ""
+                            echo "✅ Project-specific agents generated successfully!"
+                            echo "📁 Agents available in .claude/agents/"
+                            echo ""
+                        else
+                            echo ""
+                            echo "⚠️  Agent generation failed (you can run '/generate-agents' manually later)"
+                            echo ""
+                        fi
+                    else
+                        echo "⚠️  Downloaded file is empty, skipping agent generation"
+                        echo ""
+                    fi
+                else
+                    echo "⚠️  Failed to download generate-agents command from GitHub"
+                    echo "   URL: $GITHUB_URL"
+                    echo "   (continuing without agent generation)"
+                    echo ""
+                fi
+            else
+                echo "⚠️  Neither curl nor wget available for downloading generate-agents command"
+                echo "   Please install curl or wget to use auto-generate agents feature"
+                echo "   (continuing without agent generation)"
+                echo ""
+            fi
+        fi
+        
         echo "✅ Project bootstrap and initialization completed successfully!"
         echo ""
         echo "📋 Next steps:"
         echo "  1. Review the generated files"
-        echo "  2. Follow any setup instructions in README.md" 
-        echo "  3. Install dependencies if needed"
-        echo "  4. Run 'claude' to open interactive mode"
+        if [ "$GENERATE_AGENTS" = true ]; then
+            echo "  2. Check out your custom agents in .claude/agents/"
+            echo "  3. Follow any setup instructions in README.md"
+            echo "  4. Install dependencies if needed" 
+            echo "  5. Run 'claude' to open interactive mode and use your agents"
+        else
+            echo "  2. Follow any setup instructions in README.md"
+            echo "  3. Install dependencies if needed"
+            echo "  4. Run 'claude' to open interactive mode"
+        fi
         echo ""
         echo "🗑️  You can delete this script when done: rm bootstrap-with-claude.sh"
     else
@@ -911,16 +1187,25 @@ fi
 
       if (options.verbose) {
         console.log(chalk.cyan('[SCRIPT] Generated:'), scriptPath);
-        console.log(chalk.cyan('[SCRIPT] Command:'), command);
+        console.log(chalk.cyan('[SCRIPT] Prompt sections:'), promptParts.length);
+        console.log(chalk.cyan('[SCRIPT] Multi-line Claude command with readable formatting'));
       }
 
       console.log(chalk.green('📄 Bootstrap script created!'));
       console.log('');
       console.log(chalk.white('To complete the bootstrap process:'));
       console.log(chalk.cyan(`  1. cd ${workingDir}`));
-      console.log(chalk.cyan('  2. ./bootstrap-with-claude.sh'));
+      console.log(chalk.cyan('  2. ./bootstrap-with-claude.sh           # Preview (dry-run mode)'));
+      console.log(chalk.cyan('  3. ./bootstrap-with-claude.sh --apply   # Execute actual bootstrap'));
       console.log('');
-      console.log(chalk.gray('The script will use Claude Code to generate your project files.'));
+      console.log(chalk.gray('💡 The script defaults to dry-run mode for safety. Use --apply to actually execute.'));
+      console.log(chalk.yellow('⚠️  Execution may take 5+ minutes and will use Claude Code tokens.'));
+
+      if (options.generateAgents) {
+        console.log(chalk.cyan('🤖 Auto-generate agents: Enabled - Custom agents will be created for your project'));
+      } else {
+        console.log(chalk.gray('🤖 Auto-generate agents: Disabled'));
+      }
 
       return {
         success: true,
@@ -932,7 +1217,8 @@ fi
         scriptPath,
         instructions: [
           `cd ${workingDir}`,
-          './bootstrap-with-claude.sh'
+          './bootstrap-with-claude.sh           # Preview (dry-run)',
+          './bootstrap-with-claude.sh --apply   # Execute bootstrap'
         ]
       };
 

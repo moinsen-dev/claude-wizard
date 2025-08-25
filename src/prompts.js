@@ -572,6 +572,52 @@ class Prompts {
     return projectPath;
   }
 
+  async getPRDFile() {
+    const { wantsPRD } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'wantsPRD',
+        message: 'Do you have a Product Requirement Document (PRD) to include?',
+        default: false
+      }
+    ]);
+
+    if (!wantsPRD) {
+      return null;
+    }
+
+    const { prdPath } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'prdPath',
+        message: 'Path to PRD file:',
+        validate: (input) => {
+          if (!input || input.trim().length === 0) {
+            return 'PRD file path is required';
+          }
+
+          const fs = require('fs-extra');
+          const resolvedPath = path.resolve(input.trim());
+
+          if (!fs.existsSync(resolvedPath)) {
+            return `File not found: ${resolvedPath}`;
+          }
+
+          const stats = fs.statSync(resolvedPath);
+          if (!stats.isFile()) {
+            return `Path is not a file: ${resolvedPath}`;
+          }
+
+          return true;
+        },
+        filter: (input) => path.resolve(input.trim())
+      }
+    ]);
+
+    console.log(chalk.green(`✓ PRD file selected: ${path.basename(prdPath)}`));
+    return prdPath;
+  }
+
   async selectTemplate(availableTemplates) {
     const choices = [];
 
@@ -613,6 +659,10 @@ class Prompts {
     console.log(chalk.white(`Path: ${projectInfo.path}`));
     console.log(chalk.white(`Template: ${template.name} (${template.language})`));
     console.log(chalk.white(`Repository: ${template.repository.name}`));
+    if (projectInfo.prdFile) {
+      console.log(chalk.white(`PRD File: ${path.basename(projectInfo.prdFile)}`));
+      console.log(chalk.gray(`  Full path: ${projectInfo.prdFile}`));
+    }
 
     const { confirmed } = await inquirer.prompt([
       {
