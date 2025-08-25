@@ -26,9 +26,9 @@ You are a test agent for unit testing purposes.`;
     });
 
     test('should handle both model and color', () => {
-      const result = processAgentContent(sampleAgent, { 
-        model: 'sonnet', 
-        assignColors: true 
+      const result = processAgentContent(sampleAgent, {
+        model: 'sonnet',
+        assignColors: true
       });
       expect(result).toContain('model: sonnet');
       expect(result).toMatch(/color: (red|blue|green|yellow|purple|orange|pink|cyan)/);
@@ -53,7 +53,7 @@ tools: Read, Write
 ---
 
 Test content.`;
-      
+
       const result = convertToCommand(agentWithoutDesc);
       expect(result).toContain('### test-agent');
       expect(result).toContain('### No description available');
