@@ -15,6 +15,15 @@
       "type": "templates",
       "default": true,
       "description": "Bootstrap templates for various programming languages and frameworks"
+    },
+    {
+      "name": "Vibe Templates",
+      "url": "https://github.com/chrishayuk/vibe-coding-templates",
+      "branch": "main",
+      "type": "templates",
+      "description": "AI-optimized project templates",
+      "default": true,
+      "enabled": true
     }
   ],
   "cache": {

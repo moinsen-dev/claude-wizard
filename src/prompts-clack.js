@@ -476,6 +476,304 @@ class ClackPrompts {
     return this.checkCancel(confirmed);
   }
 
+  async selectConfigurationAction() {
+    const action = await select({
+      message: 'Configuration options:',
+      options: [
+        { value: 'repositories', label: '📚 Manage repositories', hint: 'Add, edit, or remove repositories' },
+        { value: 'preferences', label: '⚙️ Set default preferences', hint: 'Configure default settings' },
+        { value: 'view', label: '👀 View current configuration', hint: 'Display current settings' },
+        { value: 'reset', label: '🔄 Reset to defaults', hint: 'Restore default configuration' },
+        { value: 'back', label: '🔙 Back to main menu', hint: 'Return to main menu' }
+      ]
+    });
+
+    return this.checkCancel(action);
+  }
+
+  async selectRepositoryAction(_repositories) {
+    const action = await select({
+      message: 'Repository management:',
+      options: [
+        { value: 'add', label: '➕ Add new repository', hint: 'Add a new GitHub repository' },
+        { value: 'edit', label: '✏️ Edit existing repository', hint: 'Modify repository settings' },
+        { value: 'remove', label: '🗑️ Remove repository', hint: 'Delete a repository' },
+        { value: 'default', label: '⭐ Set default repository', hint: 'Choose default repository' },
+        { value: 'toggle', label: '🔄 Toggle repository status', hint: 'Enable/disable repositories' },
+        { value: 'back', label: '🔙 Back', hint: 'Return to configuration menu' }
+      ]
+    });
+
+    return this.checkCancel(action);
+  }
+
+  async selectRepository(repositories, message = 'Select repository:') {
+    if (repositories.length === 0) {
+      console.log(picocolors.yellow('No repositories configured.'));
+      return null;
+    }
+
+    const options = repositories.map((repo, index) => ({
+      value: index,
+      label: `${repo.name} (${repo.url})${repo.default ? ' [DEFAULT]' : ''}`,
+      hint: repo.description || ''
+    }));
+
+    const repoIndex = await select({
+      message,
+      options
+    });
+
+    return this.checkCancel(repoIndex);
+  }
+
+  async getRepositoryInfo() {
+    const name = await text({
+      message: 'Repository name:',
+      placeholder: 'My Custom Repository',
+      validate: value => value.trim() ? true : 'Repository name is required'
+    });
+    this.checkCancel(name);
+
+    const url = await text({
+      message: 'GitHub repository URL:',
+      placeholder: 'https://github.com/username/repository',
+      validate: value => {
+        const trimmed = value.trim();
+        if (!trimmed) return 'URL is required';
+        if (!trimmed.includes('github.com')) return 'Must be a GitHub URL';
+        try {
+          new global.URL(trimmed);
+          return true;
+        } catch {
+          return 'Invalid URL format';
+        }
+      }
+    });
+    this.checkCancel(url);
+
+    const branch = await text({
+      message: 'Branch name:',
+      placeholder: 'main',
+      initialValue: 'main',
+      validate: value => value.trim() ? true : 'Branch name is required'
+    });
+    this.checkCancel(branch);
+
+    const type = await select({
+      message: 'Repository type:',
+      options: [
+        { value: 'agents', label: 'Agents Repository', hint: 'Contains Claude Code agents' },
+        { value: 'templates', label: 'Templates Repository', hint: 'Contains project templates' },
+        { value: 'mixed', label: 'Mixed Repository', hint: 'Contains both agents and templates' }
+      ]
+    });
+    this.checkCancel(type);
+
+    const description = await text({
+      message: 'Description (optional):',
+      placeholder: 'Repository description'
+    });
+    this.checkCancel(description);
+
+    const isDefault = await confirm({
+      message: 'Set as default repository?',
+      initialValue: false
+    });
+    this.checkCancel(isDefault);
+
+    return {
+      name: name.trim(),
+      url: url.trim(),
+      branch: branch.trim(),
+      type,
+      description: description?.trim() || '',
+      default: isDefault,
+      enabled: true
+    };
+  }
+
+  async confirmRepositoryRemoval(repositoryName) {
+    const confirmed = await confirm({
+      message: `Are you sure you want to remove "${repositoryName}"?`,
+      initialValue: false
+    });
+
+    return this.checkCancel(confirmed);
+  }
+
+  async confirmConfigurationReset() {
+    const confirmed = await confirm({
+      message: 'Reset configuration to defaults? This will remove all custom repositories and settings.',
+      initialValue: false
+    });
+
+    return this.checkCancel(confirmed);
+  }
+
+  async confirmInstallation(summary) {
+    console.log(summary);
+
+    const confirmed = await confirm({
+      message: 'Proceed with installation?',
+      initialValue: true
+    });
+
+    return this.checkCancel(confirmed);
+  }
+
+  async addRepository() {
+    return await this.getRepositoryInfo();
+  }
+
+  async editRepository(repository) {
+    const name = await text({
+      message: 'Repository name:',
+      placeholder: repository.name,
+      initialValue: repository.name,
+      validate: value => value.trim() ? true : 'Repository name is required'
+    });
+    this.checkCancel(name);
+
+    const url = await text({
+      message: 'GitHub repository URL:',
+      placeholder: repository.url,
+      initialValue: repository.url,
+      validate: value => {
+        const trimmed = value.trim();
+        if (!trimmed) return 'URL is required';
+        if (!trimmed.includes('github.com')) return 'Must be a GitHub URL';
+        try {
+          new global.URL(trimmed);
+          return true;
+        } catch {
+          return 'Invalid URL format';
+        }
+      }
+    });
+    this.checkCancel(url);
+
+    const branch = await text({
+      message: 'Branch name:',
+      placeholder: repository.branch,
+      initialValue: repository.branch,
+      validate: value => value.trim() ? true : 'Branch name is required'
+    });
+    this.checkCancel(branch);
+
+    const type = await select({
+      message: 'Repository type:',
+      initialValue: repository.type,
+      options: [
+        { value: 'agents', label: 'Agents Repository', hint: 'Contains Claude Code agents' },
+        { value: 'templates', label: 'Templates Repository', hint: 'Contains project templates' },
+        { value: 'mixed', label: 'Mixed Repository', hint: 'Contains both agents and templates' }
+      ]
+    });
+    this.checkCancel(type);
+
+    const description = await text({
+      message: 'Description (optional):',
+      placeholder: repository.description,
+      initialValue: repository.description || ''
+    });
+    this.checkCancel(description);
+
+    const isDefault = await confirm({
+      message: 'Set as default repository?',
+      initialValue: repository.default || false
+    });
+    this.checkCancel(isDefault);
+
+    return {
+      name: name.trim(),
+      url: url.trim(),
+      branch: branch.trim(),
+      type,
+      description: description?.trim() || '',
+      default: isDefault,
+      enabled: repository.enabled !== undefined ? repository.enabled : true
+    };
+  }
+
+  async selectPreferences(currentPreferences) {
+    const showDescriptions = await confirm({
+      message: 'Show agent descriptions in lists?',
+      initialValue: currentPreferences.showDescriptions
+    });
+    this.checkCancel(showDescriptions);
+
+    const confirmBeforeInstall = await confirm({
+      message: 'Ask for confirmation before installing agents?',
+      initialValue: currentPreferences.confirmBeforeInstall
+    });
+    this.checkCancel(confirmBeforeInstall);
+
+    const confirmBeforeBootstrap = await confirm({
+      message: 'Ask for confirmation before bootstrapping projects?',
+      initialValue: currentPreferences.confirmBeforeBootstrap
+    });
+    this.checkCancel(confirmBeforeBootstrap);
+
+    const autoInstallDependencies = await confirm({
+      message: 'Automatically install project dependencies during bootstrap?',
+      initialValue: currentPreferences.autoInstallDependencies
+    });
+    this.checkCancel(autoInstallDependencies);
+
+    const autoInitGit = await confirm({
+      message: 'Automatically initialize git repository during bootstrap?',
+      initialValue: currentPreferences.autoInitGit
+    });
+    this.checkCancel(autoInitGit);
+
+    const defaultModel = await select({
+      message: 'Default Claude model for new agents:',
+      initialValue: currentPreferences.defaultModel,
+      options: [
+        { value: 'inherit', label: 'Inherit (use agent\'s default)', hint: 'Keep original model setting' },
+        { value: 'opus', label: 'Claude Opus', hint: 'Use Opus model' },
+        { value: 'sonnet', label: 'Claude Sonnet', hint: 'Use Sonnet model' },
+        { value: 'none', label: 'No model specified', hint: 'Let Claude Code decide' }
+      ]
+    });
+    this.checkCancel(defaultModel);
+
+    const autoAssignColors = await confirm({
+      message: 'Automatically assign colors to agents without colors?',
+      initialValue: currentPreferences.autoAssignColors
+    });
+    this.checkCancel(autoAssignColors);
+
+    return {
+      showDescriptions,
+      confirmBeforeInstall,
+      confirmBeforeBootstrap,
+      autoInstallDependencies,
+      autoInitGit,
+      defaultModel,
+      autoAssignColors
+    };
+  }
+
+  async confirmReset() {
+    const confirmed = await confirm({
+      message: 'Reset all configuration to defaults? This cannot be undone.',
+      initialValue: false
+    });
+
+    return this.checkCancel(confirmed);
+  }
+
+  async confirmContinueBrowsing() {
+    const confirmed = await confirm({
+      message: 'Continue browsing agents?',
+      initialValue: true
+    });
+
+    return this.checkCancel(confirmed);
+  }
+
   /**
    * Create a spinner for long-running operations
    */

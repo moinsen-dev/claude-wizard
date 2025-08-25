@@ -202,78 +202,145 @@ const REPOSITORY_TYPES = {
   MIXED: 'mixed'
 };
 
+// Load centralized repository configuration
+async function loadRepositoryConfig() {
+  const configPath = path.join(__dirname, '..', 'config', 'repositories.json');
+
+  try {
+    if (await fs.pathExists(configPath)) {
+      const repositoryConfig = await fs.readJSON(configPath);
+      return repositoryConfig.repositories || [];
+    }
+  } catch {
+    console.warn('Warning: Could not load repository config, using defaults');
+  }
+
+  // Fallback to hardcoded defaults if config file is not available
+  return [
+    {
+      name: 'Moinsen Dev Agents',
+      url: 'https://github.com/moinsen-dev/agents',
+      branch: 'main',
+      type: REPOSITORY_TYPES.AGENTS,
+      description: 'Default Claude AI agents repository',
+      default: true,
+      enabled: true
+    },
+    {
+      name: 'Vibe Templates',
+      url: 'https://github.com/chrishayuk/vibe-coding-templates',
+      branch: 'main',
+      type: REPOSITORY_TYPES.TEMPLATES,
+      description: 'AI-optimized project templates',
+      default: true,
+      enabled: true
+    },
+    {
+      name: 'Claude Templates',
+      url: 'https://github.com/moinsen-dev/claude-templates',
+      branch: 'develop',
+      type: REPOSITORY_TYPES.TEMPLATES,
+      description: 'Built-in templates for common project types',
+      default: false,
+      enabled: true
+    }
+  ];
+}
+
+// Merge centralized repository config with user-added repositories
+async function mergeRepositoryConfigs(userRepositories = []) {
+  const centralizedRepos = await loadRepositoryConfig();
+  const mergedRepos = [...centralizedRepos];
+
+  // Add user-added repositories that don't exist in centralized config
+  userRepositories.forEach(userRepo => {
+    const exists = centralizedRepos.some(centralRepo =>
+      centralRepo.url === userRepo.url && centralRepo.branch === userRepo.branch
+    );
+
+    if (!exists) {
+      mergedRepos.push({
+        ...userRepo,
+        // Mark as user-added for identification
+        userAdded: true
+      });
+    }
+  });
+
+  return mergedRepos;
+}
+
 // Configuration Management
 async function loadConfig() {
   const configPath = path.join(os.homedir(), '.claude-wizard-config.json');
 
-  const defaultConfig = {
-    defaultInstallPath: path.join(os.homedir(), '.claude', 'agents'),
-    repositories: [
-      {
-        name: 'Moinsen Dev Agents',
-        url: 'https://github.com/moinsen-dev/agents',
-        branch: 'main',
-        type: REPOSITORY_TYPES.AGENTS,
-        description: 'Default Claude AI agents repository',
-        default: true,
-        enabled: true
-      },
-      {
-        name: 'Vibe Templates',
-        url: 'https://github.com/chrishayuk/vibe-coding-templates',
-        branch: 'main',
-        type: REPOSITORY_TYPES.TEMPLATES,
-        description: 'AI-optimized project templates',
-        default: true,
-        enabled: true
-      },
-      {
-        name: 'Claude Wizard Templates',
-        url: 'https://github.com/moinsen-dev/claude-wizard',
-        branch: 'feature/bootstrap-templates',
-        type: REPOSITORY_TYPES.TEMPLATES,
-        description: 'Built-in templates for common project types',
-        default: false,
-        enabled: true
-      }
-    ],
-    installedAgents: [],
-    installedCommands: [],
-    preferences: {
-      showDescriptions: true,
-      confirmBeforeInstall: true,
-      confirmBeforeBootstrap: true,
-      autoInstallDependencies: true,
-      autoInitGit: true,
-      cacheTimeout: 3600,
-      defaultModel: 'inherit',
-      autoAssignColors: false
-    },
-    colorDistribution: {
-      lastUsed: [],
-      frequency: {}
-    }
-  };
-
   try {
+    let config = {};
     if (await fs.pathExists(configPath)) {
-      const config = await fs.readJSON(configPath);
-      const migratedConfig = await migrateConfig({ ...defaultConfig, ...config });
-
-      // Save migrated config if changes were made
-      if (config !== migratedConfig) {
-        await fs.writeJSON(configPath, migratedConfig, { spaces: 2 });
-      }
-
-      return migratedConfig;
+      config = await fs.readJSON(configPath);
     }
 
-    // Create default config file
-    await fs.writeJSON(configPath, defaultConfig, { spaces: 2 });
-    return defaultConfig;
+    // Merge centralized repositories with user-added ones
+    const repositories = await mergeRepositoryConfigs(config.repositories || []);
+
+    const defaultConfig = {
+      defaultInstallPath: path.join(os.homedir(), '.claude', 'agents'),
+      repositories,
+      installedAgents: [],
+      installedCommands: [],
+      preferences: {
+        showDescriptions: true,
+        confirmBeforeInstall: true,
+        confirmBeforeBootstrap: true,
+        autoInstallDependencies: true,
+        autoInitGit: true,
+        cacheTimeout: 3600,
+        defaultModel: 'inherit',
+        autoAssignColors: false
+      },
+      colorDistribution: {
+        lastUsed: [],
+        frequency: {}
+      }
+    };
+
+    const mergedConfig = {
+      ...defaultConfig,
+      ...config,
+      repositories // Always use merged repositories
+    };
+
+    const migratedConfig = await migrateConfig(mergedConfig);
+
+    // Save updated config if it changed or doesn't exist
+    if (!await fs.pathExists(configPath) || JSON.stringify(config) !== JSON.stringify(migratedConfig)) {
+      await fs.writeJSON(configPath, migratedConfig, { spaces: 2 });
+    }
+
+    return migratedConfig;
   } catch {
     console.warn('Warning: Could not load config, using defaults');
-    return defaultConfig;
+    const repositories = await loadRepositoryConfig();
+    return {
+      defaultInstallPath: path.join(os.homedir(), '.claude', 'agents'),
+      repositories,
+      installedAgents: [],
+      installedCommands: [],
+      preferences: {
+        showDescriptions: true,
+        confirmBeforeInstall: true,
+        confirmBeforeBootstrap: true,
+        autoInstallDependencies: true,
+        autoInitGit: true,
+        cacheTimeout: 3600,
+        defaultModel: 'inherit',
+        autoAssignColors: false
+      },
+      colorDistribution: {
+        lastUsed: [],
+        frequency: {}
+      }
+    };
   }
 }
 
@@ -302,39 +369,18 @@ async function resetConfig(keepUserData = false) {
     }
   }
 
+  // Merge centralized repositories with user-added ones if keeping user data
+  const repositories = keepUserData
+    ? await mergeRepositoryConfigs(currentConfig.repositories || [])
+    : await loadRepositoryConfig();
+
   const defaultConfig = {
     defaultInstallPath: path.join(os.homedir(), '.claude', 'agents'),
-    repositories: [
-      {
-        name: 'Moinsen Dev Agents',
-        url: 'https://github.com/moinsen-dev/agents',
-        branch: 'main',
-        type: REPOSITORY_TYPES.AGENTS,
-        description: 'Default Claude AI agents repository',
-        default: true,
-        enabled: true
-      },
-      {
-        name: 'Vibe Templates',
-        url: 'https://github.com/chrishayuk/vibe-coding-templates',
-        branch: 'main',
-        type: REPOSITORY_TYPES.TEMPLATES,
-        description: 'AI-optimized project templates',
-        default: true,
-        enabled: true
-      },
-      {
-        name: 'Claude Wizard Templates',
-        url: 'https://github.com/moinsen-dev/claude-wizard',
-        branch: 'develop',
-        type: REPOSITORY_TYPES.TEMPLATES,
-        description: 'Built-in templates for common project types',
-        default: false,
-        enabled: true
-      }
-    ],
+    repositories,
     installedAgents: keepUserData ? currentConfig.installedAgents || [] : [],
-    installedCommands: keepUserData ? currentConfig.installedCommands || [] : [],
+    installedCommands: keepUserData
+      ? currentConfig.installedCommands || []
+      : [],
     preferences: {
       showDescriptions: true,
       confirmBeforeInstall: true,
@@ -345,13 +391,15 @@ async function resetConfig(keepUserData = false) {
       defaultModel: 'inherit',
       autoAssignColors: false
     },
-    colorDistribution: keepUserData ? currentConfig.colorDistribution || {
-      lastUsed: [],
-      frequency: {}
-    } : {
-      lastUsed: [],
-      frequency: {}
-    }
+    colorDistribution: keepUserData
+      ? currentConfig.colorDistribution || {
+        lastUsed: [],
+        frequency: {}
+      }
+      : {
+        lastUsed: [],
+        frequency: {}
+      }
   };
 
   try {
@@ -369,7 +417,7 @@ async function migrateConfig(config) {
 
   // Migrate repositories to include type field
   if (migrated.repositories) {
-    migrated.repositories = migrated.repositories.map(repo => {
+    migrated.repositories = migrated.repositories.map((repo) => {
       if (!repo.type) {
         changed = true;
         return {
@@ -399,7 +447,7 @@ async function migrateConfig(config) {
 
   // Migrate old templateRepositories field if it exists
   if (migrated.templateRepositories) {
-    const templateRepos = migrated.templateRepositories.map(repo => ({
+    const templateRepos = migrated.templateRepositories.map((repo) => ({
       ...repo,
       type: REPOSITORY_TYPES.TEMPLATES,
       enabled: repo.enabled !== undefined ? repo.enabled : true
@@ -458,11 +506,18 @@ async function backupExisting(filePath) {
 
 // Repository helper functions
 function getRepositoriesByType(repositories, type) {
-  return repositories.filter(repo => repo.type === type && repo.enabled !== false);
+  return repositories.filter(
+    (repo) => repo.type === type && repo.enabled !== false
+  );
 }
 
 function getDefaultRepository(repositories, type) {
-  return repositories.find(repo => repo.type === type && repo.default === true && repo.enabled !== false) || null;
+  return (
+    repositories.find(
+      (repo) =>
+        repo.type === type && repo.default === true && repo.enabled !== false
+    ) || null
+  );
 }
 
 function validateRepositoryType(type) {
@@ -490,7 +545,11 @@ function validateRepository(repository) {
   if (!repository.type) {
     errors.push('Repository type is required');
   } else if (!validateRepositoryType(repository.type)) {
-    errors.push(`Invalid repository type. Must be one of: ${Object.values(REPOSITORY_TYPES).join(', ')}`);
+    errors.push(
+      `Invalid repository type. Must be one of: ${Object.values(
+        REPOSITORY_TYPES
+      ).join(', ')}`
+    );
   }
 
   return {
@@ -597,6 +656,8 @@ module.exports = {
   getRandomColor,
   convertToCommand,
   loadConfig,
+  loadRepositoryConfig,
+  mergeRepositoryConfigs,
   saveConfig,
   resetConfig,
   migrateConfig,

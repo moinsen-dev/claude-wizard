@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('claude-wizard')
   .description('Interactive CLI to install Claude AI agents and bootstrap projects from templates')
-  .version('0.3.1')
+  .version('0.4.1')
   .option('-m, --model <model>', 'Claude model to assign (opus, sonnet, inherit, none)')
   .option('-c, --assign-colors', 'Auto-assign colors to agents without colors')
   .option('--as-commands', 'Install as commands instead of agents')
