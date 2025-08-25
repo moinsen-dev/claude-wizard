@@ -280,14 +280,19 @@ npm install
 ```bash
 npm run dev          # Run the CLI in development mode
 npm test             # Run Jest unit tests
+npm run coverage     # Run tests with coverage report (enforces 80% threshold)
+npm run coverage:dev # Run tests with coverage report (no threshold enforcement)
 npm run lint         # Run ESLint code quality checks
+npm run lint:fix     # Auto-fix ESLint issues
+npm run build        # Run full build pipeline (lint + test)
 ```
 
 ### Code Quality Standards
 This project maintains **zero tolerance** for errors and warnings:
 - ✅ 100% ESLint compliance with pre-commit hooks
-- ✅ 98 comprehensive tests with 63.83% coverage
-- ✅ 96%+ coverage for all core components
+- ✅ 105+ comprehensive tests with coverage reporting
+- ✅ 97%+ coverage for core utility components (repository-manager, template-repository)
+- ✅ Coverage thresholds enforced at 80% for production builds
 - ✅ Comprehensive error handling and edge cases
 - ✅ Input validation and sanitization
 - ✅ Automated quality enforcement with Husky

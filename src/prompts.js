@@ -586,18 +586,31 @@ class Prompts {
       return null;
     }
 
-    const { prdPath } = await inquirer.prompt([
+    const { prdInput } = await inquirer.prompt([
       {
         type: 'input',
-        name: 'prdPath',
-        message: 'Path to PRD file:',
+        name: 'prdInput',
+        message: 'PRD file path or URL:',
         validate: (input) => {
           if (!input || input.trim().length === 0) {
-            return 'PRD file path is required';
+            return 'PRD file path or URL is required';
           }
 
+          const trimmedInput = input.trim();
+
+          // Check if it's a URL
+          if (trimmedInput.startsWith('http://') || trimmedInput.startsWith('https://')) {
+            try {
+              new global.URL(trimmedInput);
+              return true; // Valid URL
+            } catch {
+              return 'Invalid URL format';
+            }
+          }
+
+          // Check if it's a local file path
           const fs = require('fs-extra');
-          const resolvedPath = path.resolve(input.trim());
+          const resolvedPath = path.resolve(trimmedInput);
 
           if (!fs.existsSync(resolvedPath)) {
             return `File not found: ${resolvedPath}`;
@@ -609,13 +622,20 @@ class Prompts {
           }
 
           return true;
-        },
-        filter: (input) => path.resolve(input.trim())
+        }
       }
     ]);
 
-    console.log(chalk.green(`✓ PRD file selected: ${path.basename(prdPath)}`));
-    return prdPath;
+    const trimmedInput = prdInput.trim();
+
+    if (trimmedInput.startsWith('http://') || trimmedInput.startsWith('https://')) {
+      console.log(chalk.green(`✓ PRD URL selected: ${trimmedInput}`));
+      return { type: 'url', source: trimmedInput };
+    } else {
+      const resolvedPath = path.resolve(trimmedInput);
+      console.log(chalk.green(`✓ PRD file selected: ${path.basename(resolvedPath)}`));
+      return { type: 'file', source: resolvedPath };
+    }
   }
 
   async selectTemplate(availableTemplates) {
@@ -660,8 +680,12 @@ class Prompts {
     console.log(chalk.white(`Template: ${template.name} (${template.language})`));
     console.log(chalk.white(`Repository: ${template.repository.name}`));
     if (projectInfo.prdFile) {
-      console.log(chalk.white(`PRD File: ${path.basename(projectInfo.prdFile)}`));
-      console.log(chalk.gray(`  Full path: ${projectInfo.prdFile}`));
+      if (projectInfo.prdFile.type === 'url') {
+        console.log(chalk.white(`PRD URL: ${projectInfo.prdFile.source}`));
+      } else {
+        console.log(chalk.white(`PRD File: ${path.basename(projectInfo.prdFile.source)}`));
+        console.log(chalk.gray(`  Full path: ${projectInfo.prdFile.source}`));
+      }
     }
 
     const { confirmed } = await inquirer.prompt([

@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-08-25
+
+### BREAKING CHANGES
+- **🏗️ Repository Split: Templates Moved to Dedicated Repository**
+  - **Templates migrated** from `templates/` directory to separate [claude-templates repository](https://github.com/moinsen-dev/claude-templates)
+  - **Removed local templates** - All template content now served from dedicated repository
+  - **Configuration updated** - CLI automatically discovers templates from new repository structure
+  - **No user action required** - Templates continue to work seamlessly for existing users
+
+### Added
+- **🧪 Comprehensive Bash Escaping Tests** - Added `test/bash-escaping.test.js` with 7 test cases
+  - Regression tests for parentheses and quote escaping issues
+  - Validation of bash syntax in generated bootstrap scripts
+  - Edge case testing for special characters in template content
+- **📋 Enhanced Template Discovery** - Improved repository management system
+  - Support for multiple template repository sources
+  - Better error handling and fallback mechanisms
+  - Repository type-aware configuration (agents vs templates)
+
+### Changed
+- **🏛️ Architecture: Clean Separation of Concerns**
+  - **CLI repository** focuses on core application logic (336KB smaller, 73+ files removed)
+  - **Template repository** dedicated to template content and documentation
+  - **Independent versioning** allows template updates without CLI releases
+  - **Better contributor experience** with focused repositories for different concerns
+- **📚 Documentation Updates** - Updated guides and README to reference new repository structure
+- **⚙️ Configuration Management** - Enhanced repository configuration with type-aware handling
+
+### Fixed
+- **🔧 ESLint Configuration** - Added missing `it` global for Jest test files
+- **📦 Package Configuration** - Updated Jest patterns to reflect new repository structure
+
+### Benefits
+- **⚡ Faster Operations** - Reduced main repository size improves clone and operation speeds
+- **🔄 Independent Releases** - Templates can be updated independently from CLI releases
+- **🎯 Focused Development** - Clear separation between CLI development and template creation
+- **📈 Scalability** - Template collection can grow without impacting CLI repository
+- **👥 Better Collaboration** - Template contributors can focus purely on template development
+
+### Migration Guide
+- **🔄 Automatic Migration** - No manual steps required for existing users
+- **🔍 Template Discovery** - CLI automatically discovers templates from new repository
+- **📍 New Repository** - Templates now available at [moinsen-dev/claude-templates](https://github.com/moinsen-dev/claude-templates)
+- **🛠️ Development Setup** - Template contributors should clone new repository for template development
+
+**Addresses:** [Issue #6 - Split Templates into dedicated repository](https://github.com/moinsen-dev/claude-wizard/issues/6)
+
 ## [0.3.3] - 2025-08-25
 
 ### Fixed

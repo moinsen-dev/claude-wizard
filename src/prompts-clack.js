@@ -215,16 +215,28 @@ class ClackPrompts {
       return null;
     }
 
-    const prdPath = await text({
-      message: 'Path to PRD file:',
-      placeholder: './requirements.md',
+    const prdInput = await text({
+      message: 'PRD file path or URL:',
+      placeholder: './requirements.md or https://example.com/requirements.md',
       validate: (input) => {
         if (!input || input.trim().length === 0) {
-          return 'PRD file path is required';
+          return 'PRD file path or URL is required';
         }
 
-        const resolvedPath = path.resolve(input.trim());
+        const trimmedInput = input.trim();
 
+        // Check if it's a URL
+        if (trimmedInput.startsWith('http://') || trimmedInput.startsWith('https://')) {
+          try {
+            new global.URL(trimmedInput);
+            return undefined; // Valid URL
+          } catch {
+            return 'Invalid URL format';
+          }
+        }
+
+        // Check if it's a local file path
+        const resolvedPath = path.resolve(trimmedInput);
         if (!fs.existsSync(resolvedPath)) {
           return `File not found: ${resolvedPath}`;
         }
@@ -238,13 +250,20 @@ class ClackPrompts {
       }
     });
 
-    if (isCancel(prdPath)) {
+    if (isCancel(prdInput)) {
       return null;
     }
 
-    const resolvedPath = path.resolve(prdPath.trim());
-    console.log(picocolors.green(`✓ PRD file selected: ${path.basename(resolvedPath)}`));
-    return resolvedPath;
+    const trimmedInput = prdInput.trim();
+
+    if (trimmedInput.startsWith('http://') || trimmedInput.startsWith('https://')) {
+      console.log(picocolors.green(`✓ PRD URL selected: ${trimmedInput}`));
+      return { type: 'url', source: trimmedInput };
+    } else {
+      const resolvedPath = path.resolve(trimmedInput);
+      console.log(picocolors.green(`✓ PRD file selected: ${path.basename(resolvedPath)}`));
+      return { type: 'file', source: resolvedPath };
+    }
   }
 
   async selectTemplate(availableTemplates) {
@@ -297,8 +316,12 @@ class ClackPrompts {
     console.log(picocolors.white(`  Template: ${template.name} (${template.language})`));
     console.log(picocolors.white(`  Repository: ${template.repository.name}`));
     if (projectInfo.prdFile) {
-      console.log(picocolors.white(`  PRD File: ${path.basename(projectInfo.prdFile)}`));
-      console.log(picocolors.gray(`    Full path: ${projectInfo.prdFile}`));
+      if (projectInfo.prdFile.type === 'url') {
+        console.log(picocolors.white(`  PRD URL: ${projectInfo.prdFile.source}`));
+      } else {
+        console.log(picocolors.white(`  PRD File: ${path.basename(projectInfo.prdFile.source)}`));
+        console.log(picocolors.gray(`    Full path: ${projectInfo.prdFile.source}`));
+      }
     }
     console.log(picocolors.white(`  Generate Agents: ${projectInfo.generateAgents ? 'Yes' : 'No'}`));
     console.log('');
@@ -318,6 +341,130 @@ class ClackPrompts {
     });
 
     return this.checkCancel(confirmed);
+  }
+
+  async selectBrowseAction(totalAgents, departmentCount) {
+    const action = await select({
+      message: `Browse ${totalAgents} agents across ${departmentCount} departments:`,
+      options: [
+        { value: 'department', label: '🏢 Browse by department', hint: 'Explore agents by category' },
+        { value: 'all', label: '📋 Browse all agents', hint: 'View complete list' },
+        { value: 'search', label: '🔍 Search agents', hint: 'Find by keywords' },
+        { value: 'details', label: '📄 View agent details', hint: 'See detailed information' },
+        { value: 'back', label: '🔙 Back to main menu', hint: 'Return to main menu' }
+      ]
+    });
+
+    return this.checkCancel(action);
+  }
+
+  async selectDepartmentToBrowse(availableAgents) {
+    const options = Object.keys(availableAgents).map(dept => ({
+      value: dept,
+      label: `${dept}`,
+      hint: `${availableAgents[dept].length} agents`
+    }));
+
+    options.push({ value: 'back', label: '🔙 Back to browse menu' });
+
+    const department = await select({
+      message: 'Select department to browse:',
+      options
+    });
+
+    return this.checkCancel(department);
+  }
+
+  async selectAgentForDetails(allAgents) {
+    const options = [];
+
+    Object.keys(allAgents).forEach(dept => {
+      // Add department header as disabled option
+      options.push({
+        value: `header-${dept}`,
+        label: `${dept.toUpperCase()}`,
+        hint: `${allAgents[dept].length} agents`,
+        disabled: true
+      });
+
+      // Add agents for this department
+      allAgents[dept].forEach(agent => {
+        options.push({
+          value: { department: dept, agent },
+          label: `  ${agent.name}`,
+          hint: agent.description?.substring(0, 50) + '...' || ''
+        });
+      });
+    });
+
+    options.push({ value: 'back', label: '🔙 Back to browse menu' });
+
+    const selected = await select({
+      message: 'Select agent to view details:',
+      options
+    });
+
+    return this.checkCancel(selected);
+  }
+
+  async getSearchKeyword() {
+    const keyword = await text({
+      message: 'Enter search keyword:',
+      validate: (input) => input.trim() ? undefined : 'Keyword cannot be empty'
+    });
+
+    return this.checkCancel(keyword.trim());
+  }
+
+  async searchAgents(allAgents, keyword) {
+    const matchingAgents = [];
+
+    Object.keys(allAgents).forEach(dept => {
+      allAgents[dept].forEach(agent => {
+        if (agent.name.toLowerCase().includes(keyword.toLowerCase()) ||
+            (agent.description && agent.description.toLowerCase().includes(keyword.toLowerCase()))) {
+          matchingAgents.push({ department: dept, agent });
+        }
+      });
+    });
+
+    if (matchingAgents.length === 0) {
+      console.log(picocolors.yellow(`No agents found matching "${keyword}"`));
+      return [];
+    }
+
+    const options = matchingAgents.map(item => ({
+      value: item,
+      label: `${item.agent.name}`,
+      hint: `${item.department}`
+    }));
+
+    const selectedAgents = await multiselect({
+      message: `Found ${matchingAgents.length} matching agents:`,
+      options,
+      required: true
+    });
+
+    return this.checkCancel(selectedAgents);
+  }
+
+  async selectAgentToView(agents, department = null) {
+    const options = agents.map(agent => ({
+      value: agent,
+      label: agent.name,
+      hint: agent.description?.substring(0, 50) + '...' || ''
+    }));
+
+    options.push({ value: 'back', label: '🔙 Back' });
+
+    const title = department ? `${department} agents:` : 'Select agent to view:';
+
+    const agent = await select({
+      message: title,
+      options
+    });
+
+    return this.checkCancel(agent);
   }
 
   async confirmOperation(message, defaultValue = true) {

@@ -3,6 +3,7 @@ const path = require('path');
 const os = require('os');
 const chalk = require('chalk');
 const ora = require('ora');
+const axios = require('axios');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 
@@ -117,8 +118,9 @@ class TemplateBootstrapper {
 
       // Step 7: Copy PRD file if provided
       if (prdFile) {
-        await this.copyPRDFile(prdFile, fullProjectPath, verbose);
-        result.steps.push(`✓ Copied PRD file: ${path.basename(prdFile)}`);
+        const fileName = await this.copyPRDFile(prdFile, fullProjectPath, verbose);
+        const actionText = (typeof prdFile === 'string' || prdFile.type === 'file') ? 'Copied' : 'Downloaded';
+        result.steps.push(`✓ ${actionText} PRD file: ${fileName}`);
       }
 
       // Step 8: Initialize Git repository
@@ -537,47 +539,234 @@ class TemplateBootstrapper {
 
   /**
    * Copy Product Requirement Document (PRD) file to project directory
-   * @param {string} prdFilePath - Path to the PRD file
+   * @param {Object|string} prdInfo - PRD information object or legacy file path string
    * @param {string} projectPath - Project directory path
    * @param {boolean} verbose - Show detailed output
    */
-  async copyPRDFile(prdFilePath, projectPath, verbose = false) {
-    const spinner = verbose ? null : ora('Copying PRD file...').start();
+  async copyPRDFile(prdInfo, projectPath, verbose = false) {
+    // Handle legacy string format (backward compatibility)
+    if (typeof prdInfo === 'string') {
+      prdInfo = { type: 'file', source: prdInfo };
+    }
+
+    const isUrl = prdInfo.type === 'url';
+    const spinnerMessage = isUrl ? 'Downloading PRD file...' : 'Copying PRD file...';
+    const spinner = verbose ? null : ora(spinnerMessage).start();
 
     try {
-      // Validate PRD file exists
-      if (!(await fs.pathExists(prdFilePath))) {
-        throw new Error(`PRD file not found: ${prdFilePath}`);
+      let fileName;
+      let destinationPath;
+
+      if (isUrl) {
+        // Handle URL download
+        const url = prdInfo.source;
+
+        if (verbose) {
+          console.log(chalk.cyan(`[PRD] Downloading from URL: ${url}`));
+        }
+
+        // Extract filename from URL or use default
+        try {
+          const urlPath = new global.URL(url).pathname;
+          fileName = path.basename(urlPath) || 'requirements.md';
+        } catch {
+          fileName = 'requirements.md';
+        }
+
+        // Ensure filename has extension
+        if (!path.extname(fileName)) {
+          fileName += '.md';
+        }
+
+        destinationPath = path.join(projectPath, fileName);
+
+        if (verbose) {
+          console.log(chalk.cyan(`[PRD] Destination: ${destinationPath}`));
+        }
+
+        // Download the file
+        const response = await axios.get(url, {
+          timeout: 30000, // 30 second timeout
+          responseType: 'text'
+        });
+
+        // Write the downloaded content
+        await fs.writeFile(destinationPath, response.data, 'utf8');
+
+        if (spinner) {
+          spinner.succeed(`PRD file downloaded: ${fileName}`);
+        } else if (verbose) {
+          console.log(chalk.green(`[PRD] ✔ PRD file downloaded successfully: ${fileName}`));
+        }
+      } else {
+        // Handle local file copy
+        const prdFilePath = prdInfo.source;
+
+        // Validate PRD file exists
+        if (!(await fs.pathExists(prdFilePath))) {
+          throw new Error(`PRD file not found: ${prdFilePath}`);
+        }
+
+        // Get file stats to check if it's a file
+        const stats = await fs.stat(prdFilePath);
+        if (!stats.isFile()) {
+          throw new Error(`PRD path is not a file: ${prdFilePath}`);
+        }
+
+        // Extract filename and create destination path
+        fileName = path.basename(prdFilePath);
+        destinationPath = path.join(projectPath, fileName);
+
+        if (verbose) {
+          console.log(chalk.cyan(`[PRD] Copying file: ${prdFilePath}`));
+          console.log(chalk.cyan(`[PRD] Destination: ${destinationPath}`));
+        }
+
+        // Copy the PRD file
+        await fs.copy(prdFilePath, destinationPath);
+
+        if (spinner) {
+          spinner.succeed(`PRD file copied: ${fileName}`);
+        } else if (verbose) {
+          console.log(chalk.green(`[PRD] ✔ PRD file copied successfully: ${fileName}`));
+        }
       }
 
-      // Get file stats to check if it's a file
-      const stats = await fs.stat(prdFilePath);
-      if (!stats.isFile()) {
-        throw new Error(`PRD path is not a file: ${prdFilePath}`);
-      }
-
-      // Extract filename and create destination path
-      const fileName = path.basename(prdFilePath);
-      const destinationPath = path.join(projectPath, fileName);
-
-      if (verbose) {
-        console.log(chalk.cyan(`[PRD] Copying file: ${prdFilePath}`));
-        console.log(chalk.cyan(`[PRD] Destination: ${destinationPath}`));
-      }
-
-      // Copy the PRD file
-      await fs.copy(prdFilePath, destinationPath);
-
-      if (spinner) {
-        spinner.succeed(`PRD file copied: ${fileName}`);
-      } else if (verbose) {
-        console.log(chalk.green(`[PRD] ✔ PRD file copied successfully: ${fileName}`));
-      }
+      return fileName;
     } catch (error) {
       if (spinner) {
-        spinner.fail('Failed to copy PRD file');
+        spinner.fail(`Failed to ${isUrl ? 'download' : 'copy'} PRD file`);
       }
-      throw new Error(`PRD copy failed: ${error.message}`);
+
+      // Provide more specific error messages for URLs
+      if (isUrl && error.code) {
+        if (error.code === 'ENOTFOUND') {
+          throw new Error(`PRD download failed: Domain not found (${prdInfo.source})`);
+        } else if (error.code === 'ECONNREFUSED') {
+          throw new Error(`PRD download failed: Connection refused (${prdInfo.source})`);
+        } else if (error.code === 'ETIMEDOUT') {
+          throw new Error(`PRD download failed: Connection timeout (${prdInfo.source})`);
+        }
+      }
+
+      throw new Error(`PRD ${isUrl ? 'download' : 'copy'} failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Generate PRD description based on type
+   * @param {Object|string} prdInfo - PRD information object or legacy file path string
+   * @returns {string} Description text for the PRD
+   */
+  getPRDDescription(prdInfo) {
+    // Handle legacy string format
+    if (typeof prdInfo === 'string') {
+      return `A Product Requirement Document (PRD) file will be available at ${prdInfo} - reference this for project requirements and implementation details.`;
+    }
+
+    if (prdInfo.type === 'url') {
+      return `A Product Requirement Document (PRD) has been downloaded from ${prdInfo.source} and will be available in the project directory - reference this for project requirements and implementation details.`;
+    } else {
+      return `A Product Requirement Document (PRD) file will be available at ${path.basename(prdInfo.source)} - reference this for project requirements and implementation details.`;
+    }
+  }
+
+  /**
+   * Generate bash script section for PRD handling
+   * @param {Object|string} prdInfo - PRD information object or legacy file path string
+   * @returns {string} Bash script content
+   */
+  generatePRDBashScript(prdInfo) {
+    // Handle legacy string format
+    if (typeof prdInfo === 'string') {
+      return `
+# Copy PRD file if provided
+PRD_FILE="${prdInfo}"
+if [ -n "$PRD_FILE" ] && [ -f "$PRD_FILE" ]; then
+    echo "📋 Copying Product Requirement Document..."
+    PRD_BASENAME=$(basename "$PRD_FILE")
+    if cp "$PRD_FILE" "./$PRD_BASENAME"; then
+        echo "✅ PRD copied: $PRD_BASENAME"
+    else
+        echo "⚠️  Failed to copy PRD file (continuing anyway)"
+    fi
+    echo ""
+elif [ -n "$PRD_FILE" ]; then
+    echo "⚠️  PRD file not found: $PRD_FILE (continuing anyway)"
+    echo ""
+fi
+`;
+    }
+
+    if (prdInfo.type === 'url') {
+      const url = prdInfo.source;
+      let fileName;
+      try {
+        const urlPath = new global.URL(url).pathname;
+        fileName = path.basename(urlPath) || 'requirements.md';
+      } catch {
+        fileName = 'requirements.md';
+      }
+
+      // Ensure filename has extension
+      if (!path.extname(fileName)) {
+        fileName += '.md';
+      }
+
+      return `
+# Download PRD file from URL if provided
+PRD_URL="${url}"
+PRD_FILENAME="${fileName}"
+if [ -n "$PRD_URL" ]; then
+    echo "📋 Downloading Product Requirement Document from URL..."
+    if command -v curl &> /dev/null; then
+        if curl -s -L -o "$PRD_FILENAME" "$PRD_URL" --connect-timeout 30; then
+            if [ -s "$PRD_FILENAME" ]; then
+                echo "✅ PRD downloaded: $PRD_FILENAME"
+            else
+                echo "⚠️  Downloaded PRD file is empty (continuing anyway)"
+                rm -f "$PRD_FILENAME"
+            fi
+        else
+            echo "⚠️  Failed to download PRD file from URL (continuing anyway)"
+        fi
+    elif command -v wget &> /dev/null; then
+        if wget -q -O "$PRD_FILENAME" "$PRD_URL" --timeout=30; then
+            if [ -s "$PRD_FILENAME" ]; then
+                echo "✅ PRD downloaded: $PRD_FILENAME"
+            else
+                echo "⚠️  Downloaded PRD file is empty (continuing anyway)"
+                rm -f "$PRD_FILENAME"
+            fi
+        else
+            echo "⚠️  Failed to download PRD file from URL (continuing anyway)"
+        fi
+    else
+        echo "⚠️  Neither curl nor wget available for downloading PRD file"
+        echo "   Install curl or wget to download PRD from URL"
+    fi
+    echo ""
+fi
+`;
+    } else {
+      const filePath = prdInfo.source;
+      return `
+# Copy PRD file if provided
+PRD_FILE="${filePath}"
+if [ -n "$PRD_FILE" ] && [ -f "$PRD_FILE" ]; then
+    echo "📋 Copying Product Requirement Document..."
+    PRD_BASENAME=$(basename "$PRD_FILE")
+    if cp "$PRD_FILE" "./$PRD_BASENAME"; then
+        echo "✅ PRD copied: $PRD_BASENAME"
+    else
+        echo "⚠️  Failed to copy PRD file (continuing anyway)"
+    fi
+    echo ""
+elif [ -n "$PRD_FILE" ]; then
+    echo "⚠️  PRD file not found: $PRD_FILE (continuing anyway)"
+    echo ""
+fi
+`;
     }
   }
 
@@ -686,7 +875,7 @@ class TemplateBootstrapper {
       'Create a fully functional project structure ready for development with proper variable substitution in all files and directories.',
 
       // PRD file information if provided
-      prdFile ? `A Product Requirement Document (PRD) file will be available at ${prdFile} - reference this for project requirements and implementation details.` : null
+      prdFile ? this.getPRDDescription(prdFile) : null
     ];
 
     // Filter out null entries for cleaner prompt parts
@@ -956,23 +1145,7 @@ else
     echo ""
 fi
 
-${options.prdFile ? `
-# Copy PRD file if provided
-PRD_FILE="${options.prdFile}"
-if [ -n "$PRD_FILE" ] && [ -f "$PRD_FILE" ]; then
-    echo "📋 Copying Product Requirement Document..."
-    PRD_BASENAME=$(basename "$PRD_FILE")
-    if cp "$PRD_FILE" "./$PRD_BASENAME"; then
-        echo "✅ PRD copied: $PRD_BASENAME"
-    else
-        echo "⚠️  Failed to copy PRD file (continuing anyway)"
-    fi
-    echo ""
-elif [ -n "$PRD_FILE" ]; then
-    echo "⚠️  PRD file not found: $PRD_FILE (continuing anyway)"
-    echo ""
-fi
-` : ''}
+${options.prdFile ? this.generatePRDBashScript(options.prdFile) : ''}
 
 # Function to parse and display Claude output nicely
 parse_claude_output() {
@@ -1032,11 +1205,15 @@ if [ "$DRY_RUN" = true ]; then
     
     if [ "$GENERATE_AGENTS" = true ]; then
         echo ""
-        echo "🤖 Would also auto-generate project agents:"
+        echo "🤖 Would also auto-generate project agents and workflows:"
         echo "   1. Download generate-agents command from GitHub"
         echo "   2. Save to .claude/commands/generate-agents.md"
         echo "   3. Run: claude /generate-agents"
         echo "   4. Create tailored agents in .claude/agents/"
+        echo "   5. Download generate-workflows command from GitHub"
+        echo "   6. Save to .claude/commands/generate-workflows.md"
+        echo "   7. Run: claude /generate-workflows"
+        echo "   8. Create workflow orchestrator in .claude/commands/workflow.md"
     fi
     
     echo ""
@@ -1097,6 +1274,43 @@ if claude --dangerously-skip-permissions \\
                             echo "✅ Project-specific agents generated successfully!"
                             echo "📁 Agents available in .claude/agents/"
                             echo ""
+                            
+                            # Download and execute generate-workflows command
+                            echo "🔗 Downloading generate-workflows command from GitHub..."
+                            WORKFLOWS_GITHUB_URL="https://raw.githubusercontent.com/moinsen-dev/claude-wizard/develop/.claude/commands/generate-workflows.md"
+                            GENERATE_WORKFLOWS_TARGET=".claude/commands/generate-workflows.md"
+                            
+                            if curl -s -L -o "$GENERATE_WORKFLOWS_TARGET" "$WORKFLOWS_GITHUB_URL" 2>/dev/null || wget -q -O "$GENERATE_WORKFLOWS_TARGET" "$WORKFLOWS_GITHUB_URL" 2>/dev/null; then
+                                if [ -s "$GENERATE_WORKFLOWS_TARGET" ]; then
+                                    echo "✅ Downloaded generate-workflows command"
+                                    echo ""
+                                    
+                                    # Execute workflow generation
+                                    echo "⚙️ Creating workflow orchestrator based on generated agents..."
+                                    if claude --dangerously-skip-permissions \\
+                                             --print \\
+                                             --verbose \\
+                                             --output-format stream-json \\
+                                             "/generate-workflows" | parse_claude_output; then
+                                        echo ""
+                                        echo "✅ Workflow orchestrator created successfully!"
+                                        echo "📁 Workflow available at .claude/commands/workflow.md"
+                                        echo ""
+                                    else
+                                        echo ""
+                                        echo "⚠️  Workflow generation failed (you can run '/generate-workflows' manually later)"
+                                        echo ""
+                                    fi
+                                else
+                                    echo "⚠️  Downloaded workflow file is empty, skipping workflow generation"
+                                    echo ""
+                                fi
+                            else
+                                echo "⚠️  Failed to download generate-workflows command from GitHub"
+                                echo "   URL: $WORKFLOWS_GITHUB_URL"
+                                echo "   (continuing without workflow generation)"
+                                echo ""
+                            fi
                         else
                             echo ""
                             echo "⚠️  Agent generation failed (you can run '/generate-agents' manually later)"
@@ -1129,6 +1343,43 @@ if claude --dangerously-skip-permissions \\
                             echo "✅ Project-specific agents generated successfully!"
                             echo "📁 Agents available in .claude/agents/"
                             echo ""
+                            
+                            # Download and execute generate-workflows command
+                            echo "🔗 Downloading generate-workflows command from GitHub..."
+                            WORKFLOWS_GITHUB_URL="https://raw.githubusercontent.com/moinsen-dev/claude-wizard/develop/.claude/commands/generate-workflows.md"
+                            GENERATE_WORKFLOWS_TARGET=".claude/commands/generate-workflows.md"
+                            
+                            if curl -s -L -o "$GENERATE_WORKFLOWS_TARGET" "$WORKFLOWS_GITHUB_URL" 2>/dev/null || wget -q -O "$GENERATE_WORKFLOWS_TARGET" "$WORKFLOWS_GITHUB_URL" 2>/dev/null; then
+                                if [ -s "$GENERATE_WORKFLOWS_TARGET" ]; then
+                                    echo "✅ Downloaded generate-workflows command"
+                                    echo ""
+                                    
+                                    # Execute workflow generation
+                                    echo "⚙️ Creating workflow orchestrator based on generated agents..."
+                                    if claude --dangerously-skip-permissions \\
+                                             --print \\
+                                             --verbose \\
+                                             --output-format stream-json \\
+                                             "/generate-workflows" | parse_claude_output; then
+                                        echo ""
+                                        echo "✅ Workflow orchestrator created successfully!"
+                                        echo "📁 Workflow available at .claude/commands/workflow.md"
+                                        echo ""
+                                    else
+                                        echo ""
+                                        echo "⚠️  Workflow generation failed (you can run '/generate-workflows' manually later)"
+                                        echo ""
+                                    fi
+                                else
+                                    echo "⚠️  Downloaded workflow file is empty, skipping workflow generation"
+                                    echo ""
+                                fi
+                            else
+                                echo "⚠️  Failed to download generate-workflows command from GitHub"
+                                echo "   URL: $WORKFLOWS_GITHUB_URL"
+                                echo "   (continuing without workflow generation)"
+                                echo ""
+                            fi
                         else
                             echo ""
                             echo "⚠️  Agent generation failed (you can run '/generate-agents' manually later)"
@@ -1158,9 +1409,10 @@ if claude --dangerously-skip-permissions \\
         echo "  1. Review the generated files"
         if [ "$GENERATE_AGENTS" = true ]; then
             echo "  2. Check out your custom agents in .claude/agents/"
-            echo "  3. Follow any setup instructions in README.md"
-            echo "  4. Install dependencies if needed" 
-            echo "  5. Run 'claude' to open interactive mode and use your agents"
+            echo "  3. Try the workflow orchestrator: claude /workflow <type> '<description>'"
+            echo "  4. Follow any setup instructions in README.md"
+            echo "  5. Install dependencies if needed" 
+            echo "  6. Run 'claude' to open interactive mode and use your agents"
         else
             echo "  2. Follow any setup instructions in README.md"
             echo "  3. Install dependencies if needed"

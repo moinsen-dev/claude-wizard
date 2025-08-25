@@ -1,6 +1,6 @@
 {
   "name": "claude-wizard",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "🤖 Interactive CLI to discover, browse, and install Claude AI agents from GitHub repositories",
   "main": "src/index.js",
   "bin": {
@@ -9,6 +9,9 @@
   "scripts": {
     "start": "node bin/claude-wizard.js",
     "test": "jest",
+    "test:coverage": "jest --coverage",
+    "coverage": "jest --coverage --passWithNoTests",
+    "coverage:dev": "jest --coverage --passWithNoTests --coverageThreshold '{}'",
     "lint": "eslint src/ bin/",
     "lint:fix": "eslint src/ bin/ --fix",
     "build": "npm run lint && npm test",
@@ -94,6 +97,26 @@
   "jest": {
     "testPathIgnorePatterns": [
       "/node_modules/"
-    ]
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "bin/**/*.js",
+      "!src/**/*.test.js",
+      "!**/node_modules/**"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    }
   }
 }
