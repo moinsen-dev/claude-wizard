@@ -1009,11 +1009,11 @@ parse_claude_output() {
 
 # Build Claude prompt with readable sections
 echo "📝 Claude prompt sections:"
-${promptParts.map((part, index) => `echo "  ${index + 1}. ${part.substring(0, 60)}${part.length > 60 ? '...' : ''}"`).join('\n')}
+${promptParts.map((part, index) => `echo "  ${index + 1}. ${part.substring(0, 60).replace(/"/g, '\\"').replace(/\(/g, '\\(').replace(/\)/g, '\\)')}${part.length > 60 ? '...' : ''}"`).join('\n')}
 echo ""
 
 # Combine all prompt parts into a single command
-CLAUDE_PROMPT="${promptParts.map(part => part.replace(/"/g, '\\"')).join(' ')}"
+CLAUDE_PROMPT="${promptParts.map(part => part.replace(/"/g, '\\"').replace(/\(/g, '\\(').replace(/\)/g, '\\)')).join(' ')}"
 
 if [ "$DRY_RUN" = true ]; then
     echo "🔍 DRY RUN: Would execute the following Claude command:"
@@ -1076,7 +1076,7 @@ if claude --dangerously-skip-permissions \\
             mkdir -p .claude/commands
             
             # Download generate-agents command from Claude Wizard GitHub repository
-            GITHUB_URL="https://raw.githubusercontent.com/moinsen-dev/claude-wizard/main/.claude/commands/generate-agents.md"
+            GITHUB_URL="https://raw.githubusercontent.com/moinsen-dev/claude-wizard/develop/.claude/commands/generate-agents.md"
             GENERATE_AGENTS_TARGET=".claude/commands/generate-agents.md"
             
             echo "📥 Downloading generate-agents command from GitHub..."

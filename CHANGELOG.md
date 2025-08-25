@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2025-08-25
+
+### Fixed
+- **🐛 Bootstrap Script Bash Syntax Errors** - Resolved critical bash syntax errors in generated bootstrap scripts
+  - Fixed unescaped parentheses in echo statements causing `syntax error near unexpected token '('`
+  - Fixed unescaped parentheses in CLAUDE_PROMPT variable assignment
+  - Added proper escaping for parentheses `()` as `\(\)` in all bash string literals
+  - Fixed specific issues with "(PRD)" and "(do not create...)" text in generated scripts
+- **🔗 Branch Reference Fix** - Updated hardcoded GitHub branch references
+  - Changed hardcoded `main` branch to `develop` for generate-agents command downloads
+  - Fixed bootstrap scripts downloading from incorrect branch when using auto-generate agents feature
+  - Ensures compatibility with project's actual default branch structure
+
+### Technical Improvements
+- Enhanced bash string escaping in template-bootstrapper.js for both echo lines and variable assignments
+- Added comprehensive escaping for quotes `"` as `\"` and parentheses `()` as `\(\)` 
+- Improved bootstrap script generation reliability across different shell environments
+
 ## [0.3.2] - 2025-08-25
 
 ### Fixed
