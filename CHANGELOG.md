@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2025-08-25
+
+### Added
+- **🔄 Configuration Reset Command** - New `reset-config` command to restore default settings
+  - Complete reset option removes all user data
+  - `--keep-user-data` flag preserves installed agents and preferences
+  - Interactive confirmation prompt for safety
+  - Verbose mode shows full configuration details
+- **📋 PRD Copy Feature for Bootstrap** - Copy Product Requirement Documents during project creation
+  - `--prd <file>` option for bootstrap command
+  - Automatic PRD file validation and copying
+  - Integration with both standard and Claude-based bootstrap methods
+  - Support for PRD files in bootstrap scripts
+
+### Fixed
+- **🐛 Template Discovery Issues** - Resolved 404 errors during template parsing (Issue #4)
+  - Fixed incorrect template discovery logic that scanned documentation directories
+  - Added proper filtering to only parse directories with BOOTSTRAP.md files
+  - Eliminated false error messages for docs/ and examples/ directories
+  - Improved error handling to distinguish between expected and actual errors
+- **📝 Default Branch Configuration** - Updated repository configuration (Issue #5)
+  - Changed Claude Wizard Templates repository branch from feature branch to 'develop'
+  - Ensured consistent default branch references across configuration
+
+### Technical Improvements
+- Enhanced template repository structure validation
+- Improved error messaging and user experience
+- Added comprehensive test coverage for new features
+- Updated documentation and inline comments
+
 ## [0.3.0] - 2024-08-24
 
 ### Added

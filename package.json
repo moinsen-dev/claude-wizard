@@ -1,6 +1,6 @@
 {
   "name": "claude-wizard",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "🤖 Interactive CLI to discover, browse, and install Claude AI agents from GitHub repositories",
   "main": "src/index.js",
   "bin": {
@@ -21,6 +21,7 @@
     "prerelease": "npm run build"
   },
   "dependencies": {
+    "@clack/prompts": "^0.11.0",
     "axios": "^1.11.0",
     "chalk": "^4.1.2",
     "commander": "^14.0.0",
@@ -28,6 +29,7 @@
     "inquirer": "^8.2.7",
     "node-cache": "^5.1.2",
     "ora": "^5.4.1",
+    "picocolors": "^1.1.1",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
@@ -74,6 +76,9 @@
     ],
     "bin/**/*.js": [
       "eslint --fix"
+    ],
+    "test/**/*.js": [
+      "eslint --fix"
     ]
   },
   "files": [
@@ -90,17 +95,6 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/templates/"
-    ]
-  },
-  "lint-staged": {
-    "src/**/*.js": [
-      "eslint --fix"
-    ],
-    "bin/**/*.js": [
-      "eslint --fix"
-    ],
-    "test/**/*.js": [
-      "eslint --fix"
     ]
   }
 }

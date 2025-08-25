@@ -287,6 +287,81 @@ async function saveConfig(config) {
   }
 }
 
+async function resetConfig(keepUserData = false) {
+  const configPath = path.join(os.homedir(), '.claude-wizard-config.json');
+
+  // Load current config to preserve user data if requested
+  let currentConfig = {};
+  if (keepUserData) {
+    try {
+      if (await fs.pathExists(configPath)) {
+        currentConfig = await fs.readJSON(configPath);
+      }
+    } catch {
+      // Ignore errors, use empty config
+    }
+  }
+
+  const defaultConfig = {
+    defaultInstallPath: path.join(os.homedir(), '.claude', 'agents'),
+    repositories: [
+      {
+        name: 'Moinsen Dev Agents',
+        url: 'https://github.com/moinsen-dev/agents',
+        branch: 'main',
+        type: REPOSITORY_TYPES.AGENTS,
+        description: 'Default Claude AI agents repository',
+        default: true,
+        enabled: true
+      },
+      {
+        name: 'Vibe Templates',
+        url: 'https://github.com/chrishayuk/vibe-coding-templates',
+        branch: 'main',
+        type: REPOSITORY_TYPES.TEMPLATES,
+        description: 'AI-optimized project templates',
+        default: true,
+        enabled: true
+      },
+      {
+        name: 'Claude Wizard Templates',
+        url: 'https://github.com/moinsen-dev/claude-wizard',
+        branch: 'develop',
+        type: REPOSITORY_TYPES.TEMPLATES,
+        description: 'Built-in templates for common project types',
+        default: false,
+        enabled: true
+      }
+    ],
+    installedAgents: keepUserData ? currentConfig.installedAgents || [] : [],
+    installedCommands: keepUserData ? currentConfig.installedCommands || [] : [],
+    preferences: {
+      showDescriptions: true,
+      confirmBeforeInstall: true,
+      confirmBeforeBootstrap: true,
+      autoInstallDependencies: true,
+      autoInitGit: true,
+      cacheTimeout: 3600,
+      defaultModel: 'inherit',
+      autoAssignColors: false
+    },
+    colorDistribution: keepUserData ? currentConfig.colorDistribution || {
+      lastUsed: [],
+      frequency: {}
+    } : {
+      lastUsed: [],
+      frequency: {}
+    }
+  };
+
+  try {
+    await fs.writeJSON(configPath, defaultConfig, { spaces: 2 });
+    return defaultConfig;
+  } catch (error) {
+    throw new Error(`Could not reset configuration: ${error.message}`);
+  }
+}
+
 // Configuration migration for backward compatibility
 async function migrateConfig(config) {
   let migrated = { ...config };
@@ -523,6 +598,7 @@ module.exports = {
   convertToCommand,
   loadConfig,
   saveConfig,
+  resetConfig,
   migrateConfig,
   getInstallationMetadata,
   validateAgentFile,

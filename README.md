@@ -74,6 +74,11 @@ npx claude-wizard bootstrap
 npx claude-wizard bootstrap --list-templates
 npx claude-wizard bootstrap -t python
 npx claude-wizard bootstrap --dry-run
+npx claude-wizard bootstrap -t python --prd ./requirements.md
+
+# Configuration management
+npx claude-wizard reset-config
+npx claude-wizard reset-config --keep-user-data
 ```
 
 ## 📋 Menu Overview
@@ -187,7 +192,8 @@ Add custom agent repositories through the interactive interface or by editing th
 Usage: claude-wizard [options] [command]
 
 Commands:
-  bootstrap [options]  Bootstrap a new project from templates
+  bootstrap [options]     Bootstrap a new project from templates
+  reset-config [options]  Reset configuration to defaults
 
 Options:
   -V, --version        output the version number
@@ -202,11 +208,16 @@ Bootstrap Options:
   -t, --template <name>  Specify template name or language
   -n, --name <name>      Project name
   -p, --path <path>      Project path (default: current directory)
+  --prd <file>           Copy Product Requirement Document to project
   --list-templates       List all available templates
   --dry-run              Preview project structure without creating
   --verbose              Show detailed bootstrap process
   --no-install           Skip dependency installation
   --no-git               Skip git repository initialization
+
+Reset Config Options:
+  --keep-user-data       Preserve installed agents and preferences
+  --verbose              Show detailed configuration output
 ```
 
 ## 🔄 **Agent vs Command Format**

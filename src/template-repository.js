@@ -1,5 +1,6 @@
 const { GitHubAPI } = require('./github');
 const { REPOSITORY_TYPES } = require('./utils');
+const { warningManager } = require('./warning-manager');
 
 class TemplateRepository extends GitHubAPI {
   constructor() {
@@ -42,7 +43,7 @@ class TemplateRepository extends GitHubAPI {
           allTemplates[category].push(...templatesWithRepo);
         });
       } catch (error) {
-        console.warn(`Warning: Failed to fetch templates from ${repo.name}: ${error.message}`);
+        warningManager.addWarning(`Failed to fetch templates from ${repo.name}: ${error.message}`);
       }
     }
 
@@ -151,12 +152,22 @@ class TemplateRepository extends GitHubAPI {
   async parseVibeTemplateStructure(structure, repository) {
     const templates = {};
 
-    // Look for language directories that contain BOOTSTRAP.md
-    // Check both root-level directories and templates/ subdirectories
+    // Look for directories that contain BOOTSTRAP.md files
+    // Only consider directories that actually have BOOTSTRAP.md, not documentation directories
     const languageDirectories = Object.keys(structure).filter(key => {
       const items = structure[key];
       // Check if this directory contains a BOOTSTRAP.md file
-      return items && items.some(item => item.name === 'BOOTSTRAP.md');
+      const hasBootstrap = items && items.some(item => item.name === 'BOOTSTRAP.md');
+
+      // Filter out documentation and non-template directories
+      const isValidTemplateDir = !key.startsWith('docs/') &&
+                                !key.startsWith('examples/') &&
+                                key !== 'docs' &&
+                                key !== 'examples' &&
+                                !key.endsWith('/docs') &&
+                                !key.endsWith('/examples');
+
+      return hasBootstrap && isValidTemplateDir;
     });
 
     for (const langDir of languageDirectories) {
@@ -173,7 +184,7 @@ class TemplateRepository extends GitHubAPI {
           templates[language].push(template);
         }
       } catch (error) {
-        console.warn(`Warning: Failed to parse template ${langDir}: ${error.message}`);
+        warningManager.addWarning(`Failed to parse template ${langDir}: ${error.message}`);
       }
     }
 
