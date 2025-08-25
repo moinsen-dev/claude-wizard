@@ -1,4 +1,4 @@
-# Product Requirement Document: Python Snake Game
+# Product Requirement Document: Snake Game
 
 ## 1. Overview
 
@@ -38,7 +38,7 @@ A classic Snake game implementation, providing an engaging retro gaming experien
 
 ### 4.1 Game Window
 - **Resolution**: 800x600 pixels (configurable)
-- **Title**: "Python Snake Game"
+- **Title**: "Snake Game"
 - **Background**: Dark color scheme for retro feel
 - **Grid**: Optional grid lines for visual guidance
 
